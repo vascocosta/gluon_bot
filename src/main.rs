@@ -21,6 +21,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let mut stream = client.stream()?;
 
+    // Main loop that continously gets IRC messages from an asynchronous stream.
     while let Some(message) = stream.next().await.transpose()? {
         let sender = client.sender();
         let nick = match message.prefix {
@@ -32,9 +33,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
 
         match message.command {
+            // Match any PRIVMSG received from the stream of messages.
             Command::PRIVMSG(target, message) => {
                 let options = Arc::clone(&options);
 
+                // If the message is a bot command, spawn a Tokio task to handle the command.
                 if message.len() > 1 && message.starts_with(prefix) {
                     task::spawn(async move {
                         if let Ok(bot_command) = BotCommand::new(&message, nick, &target, &options)
