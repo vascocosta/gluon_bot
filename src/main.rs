@@ -33,7 +33,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         match message.command {
             Command::PRIVMSG(target, message) => {
-                //let options = &config.options;
                 let options = Arc::clone(&options);
 
                 if message.len() > 1 && message.starts_with(prefix) {
