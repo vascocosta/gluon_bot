@@ -27,7 +27,7 @@ impl<'a> BotCommand<'a> {
                 .collect(),
             nick: match nick {
                 Some(nick) => nick,
-                None => return Err("Could not parse nickname"),
+                None => return Err("Could not parse nick"),
             },
             target: target.to_string(),
             options,

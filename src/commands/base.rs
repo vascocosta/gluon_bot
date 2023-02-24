@@ -8,8 +8,8 @@ pub async fn date_time() -> String {
     format!("{} UTC", Utc::now().format("%H:%M:%S %d/%m/%Y"))
 }
 
-pub async fn hello(nickname: &str) -> String {
-    format!("Hello {}", nickname)
+pub async fn hello(nick: &str) -> String {
+    format!("Hello {}", nick)
 }
 
 pub async fn ping() -> String {
