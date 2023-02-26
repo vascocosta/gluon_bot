@@ -1,4 +1,5 @@
 mod base;
+mod omdb;
 
 use std::collections::HashMap;
 
@@ -38,6 +39,7 @@ impl<'a> BotCommand<'a> {
         match &self.name[..] {
             "date" | "time" => base::date_time().await,
             "hello" => base::hello(&self.nick).await,
+            "imdb" | "omdb" => omdb::omdb(&self.args, self.options).await,
             "ping" => base::ping().await,
             "remind" | "reminder" => base::reminder(&self.args, &self.nick).await,
             "weather" => base::weather(&self.args, self.options).await,
