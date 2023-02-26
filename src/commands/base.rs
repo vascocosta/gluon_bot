@@ -38,15 +38,15 @@ pub async fn weather(args: &[String], options: &HashMap<String, String>) -> Stri
 
     match openweathermap::weather(
         &args.join(" "),
-        match options.get("owm_units") {
+        match options.get("owm_api_units") {
             Some(value) => value,
             None => "metric",
         },
-        match options.get("owm_language") {
+        match options.get("owm_api_language") {
             Some(value) => value,
             None => "en",
         },
-        match options.get("owm_key") {
+        match options.get("owm_api_key") {
             Some(value) => value,
             None => "",
         },
