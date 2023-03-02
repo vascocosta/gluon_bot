@@ -1,29 +1,51 @@
 mod commands;
+mod tasks;
 
 use commands::BotCommand;
 use futures::prelude::*;
 use irc::client::prelude::*;
 use std::error::Error;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 use tokio::task;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    // Variables that run exclusively on the main task/thread are declared like regular variables.
+    // Variables whose immutable/mutable reference is shared among tasks/threads use an Arc/Mutex.
     let config = Config::load("config.toml")?;
-    let mut client = Client::from_config(config.clone()).await?;
+    let client = Arc::new(Mutex::new(Client::from_config(config.clone()).await?));
     let options = Arc::new(config.options);
     let prefix = match options.get("prefix") {
         Some(prefix) => prefix,
         None => "!",
     };
+    let mut stream = client.lock().await.stream()?;
 
-    client.identify()?;
+    client.lock().await.identify()?;
 
-    let mut stream = client.stream()?;
+    let client_clone = Arc::clone(&client);
+
+    // Spawn various different background tasks that run indefinitely.
+    task::spawn(async move {
+        loop {
+            let output = tasks::base::external_message().await;
+
+            if let Err(error) = client_clone
+                .lock()
+                .await
+                .send(Command::PRIVMSG("#test".to_string(), output))
+            {
+                eprintln!("{error}");
+            }
+        }
+    });
 
     // Main loop that continously gets IRC messages from an asynchronous stream.
+    // Match any PRIVMSG received from the asynchronous stream of messages.
+    // If the message is a bot command, spawn a Tokio task to handle the command.
     while let Some(message) = stream.next().await.transpose()? {
-        let sender = client.sender();
+        let sender = client.lock().await.sender();
         let nick = match message.prefix {
             Some(prefix) => match prefix {
                 Prefix::Nickname(nick, _, _) => Some(nick),
@@ -33,12 +55,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
 
         match message.command {
-            // Match any PRIVMSG received from the stream of messages.
             Command::PRIVMSG(target, message) => {
-                let options = Arc::clone(&options);
-
-                // If the message is a bot command, spawn a Tokio task to handle the command.
                 if message.len() > 1 && message.starts_with(prefix) {
+                    let options = Arc::clone(&options);
+
                     task::spawn(async move {
                         if let Ok(bot_command) = BotCommand::new(&message, nick, &target, &options)
                         {
