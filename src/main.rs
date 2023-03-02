@@ -28,17 +28,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Spawn various different background tasks that run indefinitely.
     task::spawn(async move {
-        loop {
-            let output = tasks::base::external_message().await;
-
-            if let Err(error) = client_clone
-                .lock()
-                .await
-                .send(Command::PRIVMSG("#test".to_string(), output))
-            {
-                eprintln!("{error}");
-            }
-        }
+        tasks::base::external_message(client_clone).await;
     });
 
     // Main loop that continously gets IRC messages from an asynchronous stream.
