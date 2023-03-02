@@ -54,7 +54,7 @@ pub async fn weather(args: &[String], options: &HashMap<String, String>) -> Stri
     .await
     {
         Ok(current) => format!(
-            "{}: {} {:.1}C Humidity: {}% Pressure: {}hPa Wind: {:.1}m/s @ {} Gusts: {:.1}m/s",
+            "{}: {} {:.1}C | Humidity: {}% | Pressure: {}hPa | Wind: {:.1}m/s @ {} {:.1}m/s",
             current.name,
             current.weather[0].description,
             current.main.temp,
