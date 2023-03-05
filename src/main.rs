@@ -1,4 +1,5 @@
 mod commands;
+mod database;
 mod tasks;
 
 use commands::BotCommand;
