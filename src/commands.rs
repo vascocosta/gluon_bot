@@ -7,7 +7,7 @@ pub struct BotCommand<'a> {
     name: String,
     args: Vec<String>,
     nick: String,
-    target: String,
+    _target: String,
     options: &'a HashMap<String, String>,
 }
 
@@ -30,7 +30,7 @@ impl<'a> BotCommand<'a> {
                 Some(nick) => nick,
                 None => return Err("Could not parse nick"),
             },
-            target: target.to_string(),
+            _target: target.to_string(),
             options,
         })
     }
