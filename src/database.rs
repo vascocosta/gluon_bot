@@ -34,11 +34,15 @@ impl<'a> Database<'a> {
         Self { path, extension }
     }
 
-    pub fn select<T: CsvRecord>(
+    pub fn select<T, P>(
         &self,
         from: &str,
-        where_filter: Option<fn(&T) -> bool>,
-    ) -> Result<Option<Vec<T>>, Box<dyn Error>> {
+        where_filter: P,
+    ) -> Result<Option<Vec<T>>, Box<dyn Error>>
+    where
+        T: CsvRecord,
+        P: FnMut(&T) -> bool,
+    {
         let mut entities: Vec<T> = Vec::new();
         let mut rdr = match csv::ReaderBuilder::new()
             .has_headers(false)
@@ -70,9 +74,9 @@ impl<'a> Database<'a> {
             entities.push(entity);
         }
 
-        if let Some(where_filter) = where_filter {
-            entities = entities.into_iter().filter(where_filter).collect();
-        }
+        //if let Some(where_filter) = where_filter {
+        entities = entities.into_iter().filter(where_filter).collect();
+        //}
 
         match entities.is_empty() {
             true => Ok(None),
@@ -80,8 +84,11 @@ impl<'a> Database<'a> {
         }
     }
 
-    pub fn insert<T: CsvRecord>(&self, into: &str, entity: T) -> Result<(), Box<dyn Error>> {
-        let mut entities: Vec<T> = self.select(into, None)?.unwrap_or_default();
+    pub fn insert<T>(&self, into: &str, entity: T) -> Result<(), Box<dyn Error>>
+    where
+        T: CsvRecord,
+    {
+        let mut entities: Vec<T> = self.select(into, |_| true)?.unwrap_or_default();
 
         entities.push(entity);
 
@@ -90,11 +97,12 @@ impl<'a> Database<'a> {
         Ok(())
     }
 
-    pub fn delete<T>(&self, from: &str, where_filter: fn(&&T) -> bool) -> Result<(), Box<dyn Error>>
+    pub fn delete<T, P>(&self, from: &str, where_filter: P) -> Result<(), Box<dyn Error>>
     where
         T: CsvRecord + PartialEq,
+        P: FnMut(&&T) -> bool,
     {
-        let entities = self.select(from, None)?.unwrap_or_default();
+        let entities = self.select(from, |_| true)?.unwrap_or_default();
         let delete: Vec<&T> = entities.iter().filter(where_filter).collect();
         let mut keep: Vec<&T> = Vec::new();
 

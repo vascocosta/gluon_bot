@@ -42,7 +42,7 @@ impl<'a> BotCommand<'a> {
             "imdb" | "omdb" => omdb::omdb(&self.args, self.options).await,
             "ping" => base::ping().await,
             "remind" | "reminder" => base::reminder(&self.args, &self.nick).await,
-            "weather" => base::weather(&self.args, self.options).await,
+            "weather" => base::weather(&self.args, &self.nick, self.options).await,
             _ => "Command not found".to_string(),
         }
     }
