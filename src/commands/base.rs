@@ -81,7 +81,7 @@ pub async fn weather(args: &[String], nick: &str, options: &HashMap<String, Stri
     // }
 
     let location = match args.len() {
-        0 => {
+        ..=0 => {
             let weather_settings: Vec<WeatherSetting> = match db
                 .select("weather_settings", |ws: &WeatherSetting| {
                     ws.nick.to_lowercase() == nick.to_lowercase()
