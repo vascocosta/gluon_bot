@@ -59,27 +59,6 @@ pub async fn weather(args: &[String], nick: &str, options: &HashMap<String, Stri
         None,
     );
 
-    // let mut location = args.join(" ");
-
-    // if args.len() < 1 {
-    //     let weather_settings: Vec<WeatherSetting> = match db
-    //         .select("weather_settings", |wl: &WeatherSetting| {
-    //             wl.nick.to_lowercase() == nick.to_lowercase()
-    //         }) {
-    //         Ok(weather_settings_result) => match weather_settings_result {
-    //             Some(weather_settings) => weather_settings,
-    //             None => return format!("Please provide a location."),
-    //         },
-    //         Err(_) => return format!("Please provide a location."),
-    //     };
-
-    //     if weather_settings.len() > 0 {
-    //         location = weather_settings[0].location.clone();
-    //     } else {
-    //         return format!("Please provide a locationb.")
-    //     }
-    // }
-
     let location = match args.len() {
         ..=0 => {
             let weather_settings: Vec<WeatherSetting> = match db
