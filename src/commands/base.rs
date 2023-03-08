@@ -79,20 +79,15 @@ pub async fn weather(args: &[String], nick: &str, options: &HashMap<String, Stri
             }
         }
         _ => {
-            if let Err(_) = db.delete("weather_settings", |ws: &&WeatherSetting| {
+            let entity = WeatherSetting {
+                nick: nick.to_string(),
+                location: args.join(" "),
+            };
+
+            if let Err(_) = db.update("weather_settings", entity, |ws: &&WeatherSetting| {
                 ws.nick.to_lowercase() == nick.to_lowercase()
             }) {
-                eprint!("Problem storing location.")
-            }
-
-            if let Err(_) = db.insert(
-                "weather_settings",
-                WeatherSetting {
-                    nick: nick.to_string(),
-                    location: args.join(" "),
-                },
-            ) {
-                eprint!("Problem storing location.")
+                eprintln!("Problem storing location.")
             }
 
             args.join(" ")

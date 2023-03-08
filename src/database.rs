@@ -97,6 +97,28 @@ impl<'a> Database<'a> {
         Ok(())
     }
 
+    pub fn update<T, P>(&self, from: &str, entity: T, where_filter: P) -> Result<(), Box<dyn Error>>
+    where
+        T: CsvRecord + PartialEq,
+        P: FnMut(&&T) -> bool,
+    {
+        let entities = self.select(from, |_| true)?.unwrap_or_default();
+        let delete: Vec<&T> = entities.iter().filter(where_filter).collect();
+        let mut keep: Vec<&T> = Vec::new();
+
+        for entity in &entities {
+            if !delete.contains(&&entity) {
+                keep.push(entity)
+            }
+        }
+
+        keep.push(&entity);
+
+        self.write(from, &keep)?;
+
+        Ok(())
+    }
+
     pub fn delete<T, P>(&self, from: &str, where_filter: P) -> Result<(), Box<dyn Error>>
     where
         T: CsvRecord + PartialEq,
