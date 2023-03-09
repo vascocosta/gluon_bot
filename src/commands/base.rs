@@ -1,10 +1,27 @@
 use crate::database::{CsvRecord, Database};
 use chrono::Utc;
+use rand::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time;
+
+struct Answer {
+    answer: String,
+}
+
+impl CsvRecord for Answer {
+    fn from_fields(fields: &[String]) -> Self {
+        Self {
+            answer: fields[0].clone(),
+        }
+    }
+
+    fn to_fields(&self) -> Vec<String> {
+        vec![self.answer.clone()]
+    }
+}
 
 #[derive(PartialEq)]
 struct WeatherSetting {
@@ -23,6 +40,25 @@ impl CsvRecord for WeatherSetting {
     fn to_fields(&self) -> Vec<String> {
         vec![self.nick.clone(), self.location.clone()]
     }
+}
+
+pub async fn ask(args: &[String], db: Arc<Mutex<Database>>) -> String {
+    if args.len() < 1 {
+        return format!("Please provide a question.");
+    }
+
+    let answers: Vec<Answer> = match db.lock().await.select("answers", |_| true) {
+        Ok(answers_result) => match answers_result {
+            Some(answers) => answers,
+            None => return format!("Could not find answer."),
+        },
+        Err(_) => return format!("Could not find answer."),
+    };
+
+    let mut rng = StdRng::from_entropy();
+    let index = rng.gen_range(0..answers.len());
+
+    format!("{}", answers[index].answer)
 }
 
 pub async fn date_time() -> String {

@@ -389,6 +389,7 @@ dependencies = [
  "futures",
  "irc",
  "openweathermap",
+ "rand",
  "reqwest",
  "serde",
  "serde_json",
