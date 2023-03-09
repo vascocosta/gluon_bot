@@ -3,6 +3,7 @@ mod database;
 mod tasks;
 
 use commands::BotCommand;
+use database::Database;
 use futures::prelude::*;
 use irc::client::prelude::*;
 use std::error::Error;
@@ -21,6 +22,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Some(prefix) => prefix,
         None => "!",
     };
+    let db = Arc::new(Mutex::new(Database::new(
+        match options.get("database_path") {
+            Some(path) => path,
+            None => "data/",
+        },
+        None,
+    )));
     let mut stream = client.lock().await.stream()?;
 
     client.lock().await.identify()?;
@@ -49,11 +57,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
             Command::PRIVMSG(target, message) => {
                 if message.len() > 1 && message.starts_with(prefix) {
                     let options = Arc::clone(&options);
+                    let db = Arc::clone(&db);
 
                     task::spawn(async move {
                         if let Ok(bot_command) = BotCommand::new(&message, nick, &target, &options)
                         {
-                            let output = bot_command.handle().await;
+                            let output = bot_command.handle(db).await;
 
                             if let Err(error) = sender.send_privmsg(&target, output) {
                                 eprintln!("{error}");

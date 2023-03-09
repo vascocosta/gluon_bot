@@ -1,7 +1,9 @@
 use crate::database::{CsvRecord, Database};
 use chrono::Utc;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Mutex;
 use tokio::time;
 
 #[derive(PartialEq)]
@@ -50,18 +52,17 @@ pub async fn reminder(args: &[String], nick: &str) -> String {
     format!("{nick}: Time is up!")
 }
 
-pub async fn weather(args: &[String], nick: &str, options: &HashMap<String, String>) -> String {
-    let db = Database::new(
-        match options.get("database_path") {
-            Some(path) => path,
-            None => "data/",
-        },
-        None,
-    );
-
+pub async fn weather(
+    args: &[String],
+    nick: &str,
+    options: &HashMap<String, String>,
+    db: Arc<Mutex<Database>>,
+) -> String {
     let location = match args.len() {
         ..=0 => {
             let weather_settings: Vec<WeatherSetting> = match db
+                .lock()
+                .await
                 .select("weather_settings", |ws: &WeatherSetting| {
                     ws.nick.to_lowercase() == nick.to_lowercase()
                 }) {
@@ -84,9 +85,13 @@ pub async fn weather(args: &[String], nick: &str, options: &HashMap<String, Stri
                 location: args.join(" "),
             };
 
-            if let Err(_) = db.update("weather_settings", entity, |ws: &&WeatherSetting| {
-                ws.nick.to_lowercase() == nick.to_lowercase()
-            }) {
+            if let Err(_) =
+                db.lock()
+                    .await
+                    .update("weather_settings", entity, |ws: &&WeatherSetting| {
+                        ws.nick.to_lowercase() == nick.to_lowercase()
+                    })
+            {
                 eprintln!("Problem storing location.")
             }
 

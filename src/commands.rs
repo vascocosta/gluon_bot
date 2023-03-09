@@ -1,7 +1,10 @@
 mod base;
 mod omdb;
 
+use crate::database::Database;
 use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 pub struct BotCommand<'a> {
     name: String,
@@ -35,14 +38,14 @@ impl<'a> BotCommand<'a> {
         })
     }
 
-    pub async fn handle(&self) -> String {
+    pub async fn handle(&self, db: Arc<Mutex<Database>>) -> String {
         match &self.name[..] {
             "date" | "time" => base::date_time().await,
             "hello" => base::hello(&self.nick).await,
             "imdb" | "omdb" => omdb::omdb(&self.args, self.options).await,
             "ping" => base::ping().await,
             "remind" | "reminder" => base::reminder(&self.args, &self.nick).await,
-            "weather" => base::weather(&self.args, &self.nick, self.options).await,
+            "weather" => base::weather(&self.args, &self.nick, self.options, db).await,
             _ => "Command not found".to_string(),
         }
     }

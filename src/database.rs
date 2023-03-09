@@ -19,19 +19,22 @@ pub trait CsvRecord {
     fn to_fields(&self) -> Vec<String>;
 }
 
-pub struct Database<'a> {
-    path: &'a str,
-    extension: &'a str,
+pub struct Database {
+    path: String,
+    extension: String,
 }
 
-impl<'a> Database<'a> {
-    pub fn new(path: &'a str, extension: Option<&'a str>) -> Self {
+impl Database {
+    pub fn new(path: &str, extension: Option<&str>) -> Self {
         let extension = match extension {
             None => "csv",
             Some(extension) => extension,
         };
 
-        Self { path, extension }
+        Self {
+            path: path.to_string(),
+            extension: extension.to_string(),
+        }
     }
 
     pub fn select<T, P>(
@@ -74,9 +77,7 @@ impl<'a> Database<'a> {
             entities.push(entity);
         }
 
-        //if let Some(where_filter) = where_filter {
         entities = entities.into_iter().filter(where_filter).collect();
-        //}
 
         match entities.is_empty() {
             true => Ok(None),
