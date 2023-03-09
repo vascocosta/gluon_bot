@@ -10,7 +10,7 @@ pub struct BotCommand<'a> {
     name: String,
     args: Vec<String>,
     nick: String,
-    _target: String,
+    target: String,
     options: &'a HashMap<String, String>,
 }
 
@@ -33,7 +33,7 @@ impl<'a> BotCommand<'a> {
                 Some(nick) => nick,
                 None => return Err("Could not parse nick"),
             },
-            _target: target.to_string(),
+            target: target.to_string(),
             options,
         })
     }
@@ -45,6 +45,7 @@ impl<'a> BotCommand<'a> {
             "hello" => base::hello(&self.nick).await,
             "imdb" | "omdb" => omdb::omdb(&self.args, self.options).await,
             "ping" => base::ping().await,
+            "quote" => base::quote(&self.args, &self.target, db).await,
             "remind" | "reminder" => base::reminder(&self.args, &self.nick).await,
             "weather" => base::weather(&self.args, &self.nick, self.options, db).await,
             _ => "Command not found".to_string(),

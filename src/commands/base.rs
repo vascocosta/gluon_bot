@@ -23,6 +23,26 @@ impl CsvRecord for Answer {
     }
 }
 
+struct Quote {
+    date: String,
+    text: String,
+    channel: String,
+}
+
+impl CsvRecord for Quote {
+    fn from_fields(fields: &[String]) -> Self {
+        Self {
+            date: fields[0].clone(),
+            text: fields[1].clone(),
+            channel: fields[2].clone(),
+        }
+    }
+
+    fn to_fields(&self) -> Vec<String> {
+        vec![self.date.clone(), self.text.clone(), self.channel.clone()]
+    }
+}
+
 #[derive(PartialEq)]
 struct WeatherSetting {
     nick: String,
@@ -71,6 +91,43 @@ pub async fn hello(nick: &str) -> String {
 
 pub async fn ping() -> String {
     format!("pong")
+}
+
+pub async fn quote(args: &[String], target: &str, db: Arc<Mutex<Database>>) -> String {
+    if args.len() == 0 {
+        let quotes: Vec<Quote> = match db
+            .lock()
+            .await
+            .select("quotes", |q: &Quote| q.channel.to_lowercase() == target)
+        {
+            Ok(quotes_result) => match quotes_result {
+                Some(quotes) => quotes,
+                None => return format!("Could not find quotes."),
+            },
+            Err(_) => return format!("Could not find quotes."),
+        };
+
+        if quotes.len() == 0 {
+            return format!("Could not find quotes.");
+        }
+
+        let mut rng = StdRng::from_entropy();
+        let index = rng.gen_range(0..quotes.len());
+
+        return format!("{} {}", quotes[index].date, quotes[index].text);
+    } else {
+        match db.lock().await.insert(
+            "quotes",
+            Quote {
+                date: Utc::now().format("%d-%m-%Y").to_string(),
+                text: args.join(" "),
+                channel: target.to_string(),
+            },
+        ) {
+            Ok(_) => return format!("Quote added successfully."),
+            Err(_) => return format!("Problem adding quote."),
+        }
+    }
 }
 
 pub async fn reminder(args: &[String], nick: &str) -> String {
