@@ -18,13 +18,7 @@ pub async fn external_message(client: Arc<Mutex<Client>>) {
             Err(error) => {
                 thread::sleep(Duration::from_secs(1));
 
-                if let Err(error) = client
-                    .lock()
-                    .await
-                    .send(Command::PRIVMSG("#aviation".to_string(), error.to_string()))
-                {
-                    eprintln!("{error}");
-                }
+                eprintln!("{error}");
 
                 return;
             }
@@ -59,8 +53,10 @@ pub async fn external_message(client: Arc<Mutex<Client>>) {
                     break;
                 }
                 Err(err) => {
-                    println!("Error reading line: {}", err);
                     thread::sleep(Duration::from_secs(1));
+
+                    eprintln!("Error reading line: {}", err);
+
                     continue;
                 }
             }

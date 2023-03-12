@@ -64,21 +64,21 @@ impl CsvRecord for WeatherSetting {
 
 pub async fn ask(args: &[String], db: Arc<Mutex<Database>>) -> String {
     if args.len() < 1 {
-        return format!("Please provide a question.");
+        return String::from("Please provide a question.");
     }
 
     let answers: Vec<Answer> = match db.lock().await.select("answers", |_| true) {
         Ok(answers_result) => match answers_result {
             Some(answers) => answers,
-            None => return format!("Could not find answer."),
+            None => return String::from("Could not find answer."),
         },
-        Err(_) => return format!("Could not find answer."),
+        Err(_) => return String::from("Could not find answer."),
     };
 
     let mut rng = StdRng::from_entropy();
     let index = rng.gen_range(0..answers.len());
 
-    format!("{}", answers[index].answer)
+    answers[index].answer.clone()
 }
 
 pub async fn date_time() -> String {
@@ -90,7 +90,7 @@ pub async fn hello(nick: &str) -> String {
 }
 
 pub async fn ping() -> String {
-    format!("pong")
+    String::from("pong")
 }
 
 pub async fn quote(args: &[String], target: &str, db: Arc<Mutex<Database>>) -> String {
@@ -102,13 +102,13 @@ pub async fn quote(args: &[String], target: &str, db: Arc<Mutex<Database>>) -> S
         {
             Ok(quotes_result) => match quotes_result {
                 Some(quotes) => quotes,
-                None => return format!("Could not find quotes."),
+                None => return String::from("Could not find quotes."),
             },
-            Err(_) => return format!("Could not find quotes."),
+            Err(_) => return String::from("Could not find quotes."),
         };
 
         if quotes.len() == 0 {
-            return format!("Could not find quotes.");
+            return String::from("Could not find quotes.");
         }
 
         let mut rng = StdRng::from_entropy();
@@ -121,23 +121,23 @@ pub async fn quote(args: &[String], target: &str, db: Arc<Mutex<Database>>) -> S
             Quote {
                 date: Utc::now().format("%d-%m-%Y").to_string(),
                 text: args.join(" "),
-                channel: target.to_string(),
+                channel: String::from(target),
             },
         ) {
-            Ok(_) => return format!("Quote added successfully."),
-            Err(_) => return format!("Problem adding quote."),
+            Ok(_) => return String::from("Quote added successfully."),
+            Err(_) => return String::from("Problem adding quote."),
         }
     }
 }
 
 pub async fn reminder(args: &[String], nick: &str) -> String {
     if args.len() < 1 {
-        return format!("Please provide a duration in minutes.");
+        return String::from("Please provide a duration in minutes.");
     }
 
     let minutes: u64 = match args[0].parse() {
         Ok(minutes) => minutes,
-        Err(_) => return format!("Please provide a duration in integer minutes."),
+        Err(_) => return String::from("Please provide a duration in integer minutes."),
     };
 
     time::sleep(Duration::from_secs(minutes * 60)).await;
@@ -161,20 +161,20 @@ pub async fn weather(
                 }) {
                 Ok(weather_settings_result) => match weather_settings_result {
                     Some(weather_settings) => weather_settings,
-                    None => return format!("Please provide a location."),
+                    None => return String::from("Please provide a location."),
                 },
-                Err(_) => return format!("Please provide a location."),
+                Err(_) => return String::from("Please provide a location."),
             };
 
             if weather_settings.len() > 0 {
                 weather_settings[0].location.clone()
             } else {
-                return format!("Please provide a location.");
+                return String::from("Please provide a location.");
             }
         }
         _ => {
             let entity = WeatherSetting {
-                nick: nick.to_string(),
+                nick: String::from(nick),
                 location: args.join(" "),
             };
 
@@ -220,6 +220,6 @@ pub async fn weather(
             current.wind.deg,
             current.wind.gust.unwrap_or_default(),
         ),
-        Err(_) => format!("Could not fetch weather."),
+        Err(_) => String::from("Could not fetch weather."),
     }
 }

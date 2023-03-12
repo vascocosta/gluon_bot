@@ -73,7 +73,7 @@ pub struct Rating {
 
 pub async fn omdb(args: &[String], options: &HashMap<String, String>) -> String {
     if args.len() < 1 {
-        return format!("Please provide a movie or series title.");
+        return String::from("Please provide a movie or series title.");
     }
 
     let omdb: OmDb = match reqwest::get(format!(
@@ -88,9 +88,9 @@ pub async fn omdb(args: &[String], options: &HashMap<String, String>) -> String 
     {
         Ok(response) => match response.json().await {
             Ok(omdb) => omdb,
-            Err(_) => return format!("Could not find movie or series."),
+            Err(_) => return String::from("Could not find movie or series."),
         },
-        Err(_) => return format!("Could not fetch data."),
+        Err(_) => return String::from("Could not fetch data."),
     };
 
     format!(

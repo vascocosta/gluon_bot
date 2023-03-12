@@ -32,8 +32,8 @@ impl Database {
         };
 
         Self {
-            path: path.to_string(),
-            extension: extension.to_string(),
+            path: String::from(path),
+            extension: String::from(extension),
         }
     }
 
@@ -56,11 +56,11 @@ impl Database {
                 csv::ErrorKind::Io(error) => match error.kind() {
                     ErrorKind::NotFound => return Ok(Some(entities)),
                     ErrorKind::PermissionDenied => {
-                        return Err(Box::new(CsvDbError("Permission denied".into())))
+                        return Err(Box::new(CsvDbError(String::from("Permission denied"))))
                     }
-                    _ => return Err(Box::new(CsvDbError("Problem reading file".into()))),
+                    _ => return Err(Box::new(CsvDbError(String::from("Problem reading file")))),
                 },
-                _ => return Err(Box::new(CsvDbError("Unknown problem".into()))),
+                _ => return Err(Box::new(CsvDbError(String::from("Unknown problem")))),
             },
         };
 

@@ -33,7 +33,7 @@ impl<'a> BotCommand<'a> {
                 Some(nick) => nick,
                 None => return Err("Could not parse nick"),
             },
-            target: target.to_string(),
+            target: String::from(target),
             options,
         })
     }
