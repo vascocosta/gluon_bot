@@ -87,7 +87,7 @@ pub async fn next(args: &[String], nick: &str, db: Arc<Mutex<Database>>) -> Stri
         }],
     };
 
-    if events.len() > 0 && time_zones.len() > 0 {
+    if events.len() > 0 {
         let tz: Tz = match time_zones[0].name.parse() {
             Ok(tz) => tz,
             Err(_) => Tz::CET,
