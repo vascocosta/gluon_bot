@@ -58,12 +58,12 @@ impl CsvRecord for TimeZone {
     }
 }
 
-pub async fn next(args: &[String], nick: &str, db: Arc<Mutex<Database>>) -> String {
-    let events: Vec<Event> = match db
-        .lock()
-        .await
-        .select("events", |e: &Event| e.datetime > Utc::now())
-    {
+pub async fn next(args: &[String], nick: &str, target: &str, db: Arc<Mutex<Database>>) -> String {
+    let events: Vec<Event> = match db.lock().await.select("events", |e: &Event| {
+        e.datetime > Utc::now()
+            && e.channel.to_lowercase() == target.to_lowercase()
+            && e.description.to_lowercase().contains(&args.join(" "))
+    }) {
         Ok(events_result) => match events_result {
             Some(events) => events,
             None => return String::from("Could not get events."),

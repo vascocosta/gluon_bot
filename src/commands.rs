@@ -47,7 +47,7 @@ impl<'a> BotCommand<'a> {
             "date" | "time" => base::date_time().await,
             "hello" => base::hello(&self.nick).await,
             "imdb" | "omdb" => omdb::omdb(&self.args, self.options).await,
-            "next" => next::next(&self.args, &self.nick, db).await,
+            "next" => next::next(&self.args, &self.nick, &self.target, db).await,
             "ping" => base::ping().await,
             "quote" => base::quote(&self.args, &self.target, db).await,
             "remind" | "reminder" => base::reminder(&self.args, &self.nick).await,
