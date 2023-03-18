@@ -10,6 +10,7 @@ struct Event {
     description: String,
     datetime: DateTime<Utc>,
     channel: String,
+    tags: String,
     notify: bool,
 }
 
@@ -24,6 +25,7 @@ impl CsvRecord for Event {
                 Err(_) => Utc::now(),
             },
             channel: fields[4].clone(),
+            tags: fields[5].clone(),
             notify: false,
         }
     }
@@ -35,6 +37,7 @@ impl CsvRecord for Event {
             self.description.clone(),
             self.datetime.to_string(),
             self.channel.clone(),
+            self.tags.clone(),
             self.notify.to_string(),
         ]
     }
@@ -63,7 +66,8 @@ pub async fn next(args: &[String], nick: &str, target: &str, db: Arc<Mutex<Datab
         e.datetime > Utc::now()
             && e.channel.to_lowercase() == target.to_lowercase()
             && (e.category.to_lowercase().contains(&args.join(" "))
-                || e.description.to_lowercase().contains(&args.join(" ")))
+                || e.description.to_lowercase().contains(&args.join(" "))
+                || e.tags.to_lowercase().contains(&args.join(" ")))
     }) {
         Ok(events_result) => match events_result {
             Some(events) => events,
