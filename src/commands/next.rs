@@ -69,7 +69,7 @@ pub async fn next(args: &[String], nick: &str, target: &str, db: Arc<Mutex<Datab
             Some(events) => events,
             None => return String::from("Could not get events."),
         },
-        Err(error) => return format!("{error}"),
+        Err(_) => return String::from("Could not get events."),
     };
 
     let time_zones: Vec<TimeZone> = match db.lock().await.select("time_zones", |tz: &TimeZone| {
