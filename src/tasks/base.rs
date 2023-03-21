@@ -1,7 +1,6 @@
 use irc::client::prelude::Command;
 use irc::client::Client;
 use std::sync::Arc;
-use std::thread;
 use tokio::io::AsyncBufReadExt;
 use tokio::sync::Mutex;
 use tokio::{fs::OpenOptions, io::BufReader};
