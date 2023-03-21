@@ -80,20 +80,22 @@ pub async fn next(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>) {
             }
         };
 
-        let hash = calculate_hash(&events[0]);
+        for event in events {
+            let hash = calculate_hash(&event);
 
-        if let None = hashes.iter().find(|h| h == &&hash) {
-            if let Err(error) = client.lock().await.send(Command::PRIVMSG(
-                events[0].channel.clone(),
-                format!(
-                    "Starting in 5 minutes: {} {} {}",
-                    events[0].category, events[0].name, events[0].description
-                ),
-            )) {
-                eprintln!("{error}");
+            if let None = hashes.iter().find(|h| h == &&hash) {
+                if let Err(error) = client.lock().await.send(Command::PRIVMSG(
+                    event.channel.clone(),
+                    format!(
+                        "Starting in 5 minutes: {} {} {}",
+                        event.category, event.name, event.description
+                    ),
+                )) {
+                    eprintln!("{error}");
+                }
+
+                hashes.push(hash);
             }
-
-            hashes.push(hash);
         }
 
         // let events: Vec<Event> = match db
