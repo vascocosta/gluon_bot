@@ -3,8 +3,8 @@ use irc::client::Client;
 use std::sync::Arc;
 use tokio::io::AsyncBufReadExt;
 use tokio::sync::Mutex;
-use tokio::{fs::OpenOptions, io::BufReader};
 use tokio::time::{sleep, Duration};
+use tokio::{fs::OpenOptions, io::BufReader};
 
 pub async fn external_message(client: Arc<Mutex<Client>>) {
     loop {

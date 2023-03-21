@@ -87,7 +87,7 @@ pub async fn next(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>) {
                 if let Err(error) = client.lock().await.send(Command::PRIVMSG(
                     event.channel.clone(),
                     format!(
-                        "Starting in 5 minutes: {} {} {}",
+                        "\x034Starting in 5 minutes:\x03 \x02{} {} {}\x02",
                         event.category, event.name, event.description
                     ),
                 )) {
