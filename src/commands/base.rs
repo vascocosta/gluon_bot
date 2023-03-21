@@ -206,7 +206,9 @@ pub async fn weather(
             Some(value) => value,
             None => "",
         },
-    ).await {
+    )
+    .await
+    {
         Ok(current) => format!(
             "{}: {} {:.1}C | Humidity: {}% | Pressure: {}hPa | Wind: {:.1}m/s @ {} {:.1}m/s",
             current.name,
