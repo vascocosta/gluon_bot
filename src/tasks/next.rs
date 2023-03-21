@@ -97,59 +97,5 @@ pub async fn next(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>) {
                 hashes.push(hash);
             }
         }
-
-        // let events: Vec<Event> = match db
-        //     .lock()
-        //     .await
-        //     .select("events", |e: &Event| e.announced == false)
-        // {
-        //     Ok(events) => match events {
-        //         Some(events) => events,
-        //         None => continue,
-        //     },
-        //     Err(_) => {
-        //         eprintln!("Could not get events.");
-
-        //         continue;
-        //     }
-        // };
-
-        // let duration = events[0].datetime.signed_duration_since(Utc::now());
-
-        // println!("{}", duration.num_seconds());
-
-        // if duration.num_seconds() <= 300 && duration.num_seconds() > 240 {
-        //     if let Err(error) = client.lock().await.send(Command::PRIVMSG(
-        //         events[0].channel.clone(),
-        //         format!(
-        //             "Starting in 5 minutes: {} {} {}",
-        //             events[0].category, events[0].name, events[0].description
-        //         ),
-        //     )) {
-        //         eprintln!("{error}");
-        //     }
-
-        //     let event = Event {
-        //         category: events[0].category.clone(),
-        //         name: events[0].name.clone(),
-        //         description: events[0].description.clone(),
-        //         datetime: events[0].datetime,
-        //         tags: events[0].tags.clone(),
-        //         channel: events[0].channel.clone(),
-        //         announced: true,
-        //     };
-
-        //     if let Err(_) = db.lock().await.update("events", event, |e: &&Event| {
-        //         e.category == events[0].category
-        //             && e.name == events[0].name
-        //             && e.description == events[0].description
-        //             && e.datetime == events[0].datetime
-        //             && e.tags == events[0].tags
-        //             && e.channel == events[0].channel
-        //             && e.announced == events[0].announced
-        //     }) {
-        //         eprintln!("Problem updating event.")
-        //     }
-        // }
     }
 }
