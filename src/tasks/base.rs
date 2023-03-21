@@ -2,10 +2,10 @@ use irc::client::prelude::Command;
 use irc::client::Client;
 use std::sync::Arc;
 use std::thread;
-use std::time::Duration;
 use tokio::io::AsyncBufReadExt;
 use tokio::sync::Mutex;
 use tokio::{fs::OpenOptions, io::BufReader};
+use tokio::time::{sleep, Duration};
 
 pub async fn external_message(client: Arc<Mutex<Client>>) {
     loop {
@@ -18,7 +18,7 @@ pub async fn external_message(client: Arc<Mutex<Client>>) {
         {
             Ok(file) => file,
             Err(error) => {
-                thread::sleep(Duration::from_secs(1));
+                sleep(Duration::from_secs(1)).await;
 
                 eprintln!("{error}");
 
@@ -33,7 +33,7 @@ pub async fn external_message(client: Arc<Mutex<Client>>) {
 
             match reader.read_line(&mut line).await {
                 Ok(0) => {
-                    thread::sleep(Duration::from_secs(1));
+                    sleep(Duration::from_secs(1)).await;
 
                     continue;
                 }
@@ -54,7 +54,7 @@ pub async fn external_message(client: Arc<Mutex<Client>>) {
                     break;
                 }
                 Err(err) => {
-                    thread::sleep(Duration::from_secs(1));
+                    sleep(Duration::from_secs(1)).await;
 
                     eprintln!("Error reading line: {}", err);
 
