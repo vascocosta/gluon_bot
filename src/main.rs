@@ -34,12 +34,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
     client.lock().await.identify()?;
 
     let client_clone = Arc::clone(&client);
-    let db_clone = Arc::clone(&db); // NEW!!!
+    let db_clone = Arc::clone(&db);
 
     // Spawn various different background tasks that run indefinitely.
     task::spawn(async move {
-        //tasks::base::external_message(client_clone).await;
         tasks::next::next(client_clone, db_clone).await;
+    });
+
+    let client_clone = Arc::clone(&client);
+
+    task::spawn(async move {
+        tasks::base::external_message(client_clone).await;
     });
 
     // Main loop that continously gets IRC messages from an asynchronous stream.
