@@ -22,8 +22,8 @@ pub struct Meta {
 pub struct Data {
     #[serde(rename = "AUD")]
     pub aud: Aud,
-    #[serde(rename = "CHF")]
-    pub chf: Chf,
+    #[serde(rename = "BTC")]
+    pub btc: Btc,
     #[serde(rename = "CNY")]
     pub cny: Cny,
     #[serde(rename = "EUR")]
@@ -49,7 +49,7 @@ pub struct Aud {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Chf {
+pub struct Btc {
     pub code: String,
     pub value: f64,
 }
@@ -134,11 +134,14 @@ pub async fn rates(args: &[String], options: &HashMap<String, String>) -> String
         {}: {}\r\n\
         {}: {}\r\n\
         {}: {}\r\n\
+        {}: {}\r\n\
         {}: {}",
         currencies.meta.last_updated_at,
         base_currency.to_uppercase(),
         currencies.data.aud.code,
         currencies.data.aud.value,
+        currencies.data.btc.code,
+        currencies.data.btc.value,
         currencies.data.cny.code,
         currencies.data.cny.value,
         currencies.data.eur.code,
