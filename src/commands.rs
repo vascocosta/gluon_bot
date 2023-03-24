@@ -2,6 +2,7 @@ mod base;
 mod city;
 mod next;
 mod omdb;
+mod rates;
 
 use crate::database::Database;
 use std::collections::HashMap;
@@ -50,6 +51,7 @@ impl<'a> BotCommand<'a> {
             "next" => next::next(&self.args, &self.nick, &self.target, db).await,
             "ping" => base::ping().await,
             "quote" => base::quote(&self.args, &self.target, db).await,
+            "rates" => rates::rates(&self.args, self.options).await,
             "remind" | "reminder" => base::reminder(&self.args, &self.nick).await,
             "weather" => base::weather(&self.args, &self.nick, self.options, db).await,
             _ => "Command not found".to_string(),
