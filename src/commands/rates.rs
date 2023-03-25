@@ -141,8 +141,8 @@ pub async fn rates(args: &[String], options: &HashMap<String, String>) -> String
         {}: {}\r\n\
         {}: {}\r\n\
         {}: {}",
-        updated.format("%d-%m-%Y %H:%M"),
         base_currency.to_uppercase(),
+        updated.format("%d-%m-%Y %H:%M"),
         currencies.data.aud.code,
         currencies.data.aud.value,
         currencies.data.btc.code,
