@@ -1,3 +1,4 @@
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -124,9 +125,13 @@ pub async fn rates(args: &[String], options: &HashMap<String, String>) -> String
         },
         Err(_) => return String::from("Could not fetch data."),
     };
+    let updated = match currencies.meta.last_updated_at.parse() {
+        Ok(updated) => updated,
+        Err(_) => Utc::now(),
+    };
 
     format!(
-        "\x02Updated:\x02 {} \x02Base:\x02 {}\r\n\
+        "\x02CUR:\x02 {} \x02Updated:\x02 {}\r\n\
         {}: {}\r\n\
         {}: {}\r\n\
         {}: {}\r\n\
@@ -136,7 +141,7 @@ pub async fn rates(args: &[String], options: &HashMap<String, String>) -> String
         {}: {}\r\n\
         {}: {}\r\n\
         {}: {}",
-        currencies.meta.last_updated_at,
+        updated.format("%d-%m-%Y %H:%M"),
         base_currency.to_uppercase(),
         currencies.data.aud.code,
         currencies.data.aud.value,
