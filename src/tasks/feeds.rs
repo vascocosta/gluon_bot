@@ -1,6 +1,6 @@
 use crate::database::{CsvRecord, Database};
 use chrono::{DateTime, Utc};
-use feed_rs::model::Category;
+use feed_rs::model::Text;
 use feed_rs::parser;
 use irc::client::prelude::Command;
 use irc::client::Client;
@@ -63,28 +63,38 @@ pub async fn feeds(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>) {
             let db_clone = Arc::clone(&db);
 
             task::spawn(async move {
-                let url = feed.url;
+                let id = feed.id;
                 let category = feed.category;
+                let url = feed.url;
                 let channel = feed.channel;
                 let last_modified = feed.published;
-                let id = feed.id;
-                let feed = reqwest::get(url.clone())
-                    .await
-                    .unwrap()
-                    .text()
-                    .await
-                    .unwrap();
-                let feed = parser::parse(feed.as_bytes()).unwrap();
+                let feed = match reqwest::get(url.clone()).await {
+                    Ok(response) => match response.text().await {
+                        Ok(feed) => feed,
+                        Err(_) => return,
+                    }
+                    Err(_) => return,
+                };
+                let feed = match parser::parse(feed.as_bytes()) {
+                    Ok(feed) => feed,
+                    Err(_) => return,
+                };
 
                 for entry in feed.entries {
                     if entry.published.unwrap() > last_modified {
                         if let Err(error) = client_clone.lock().await.send(Command::PRIVMSG(
                             channel.clone(),
-                            format!(
-                                "{} - {}",
-                                entry.title.unwrap().content,
-                                entry.links[0].href
-                            ),
+                            match entry.title {
+                                    Some(title) => title.content,
+                                    None => String::from(""),
+                            }
+                        )) {
+                            eprintln!("{error}");
+                        }
+
+                        if let Err(error) = client_clone.lock().await.send(Command::PRIVMSG(
+                            channel.clone(),
+                            entry.links[0].href.clone()
                         )) {
                             eprintln!("{error}");
                         }
