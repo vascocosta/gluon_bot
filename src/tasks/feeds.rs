@@ -44,7 +44,7 @@ impl CsvRecord for Feed {
 
 pub async fn feeds(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>) {
     loop {
-        sleep(Duration::from_secs(20)).await;
+        sleep(Duration::from_secs(300)).await;
 
         let feeds: Vec<Feed> = match db.lock().await.select("feeds", |_| true) {
             Ok(feeds) => match feeds {
