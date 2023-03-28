@@ -79,7 +79,10 @@ pub async fn feeds(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>) {
                     Err(_) => return,
                 };
 
-                for entry in feed.entries {
+                let mut entries = feed.entries;
+                entries.sort_by(|a, b| b.published.cmp(&a.published));
+
+                for entry in entries {
                     let entry_published = match entry.published {
                         Some(entry_published) => entry_published,
                         None => return,
