@@ -1,6 +1,5 @@
 use crate::database::{CsvRecord, Database};
 use chrono::{DateTime, Utc};
-use feed_rs::model::Text;
 use feed_rs::parser;
 use irc::client::prelude::Command;
 use irc::client::Client;
@@ -21,7 +20,7 @@ struct Feed {
 impl CsvRecord for Feed {
     fn from_fields(fields: &[String]) -> Self {
         Self {
-            id: fields[0].parse().unwrap(),
+            id: fields[0].parse().unwrap_or_default(),
             category: fields[1].clone(),
             url: fields[2].clone(),
             channel: fields[3].clone(),
@@ -67,7 +66,7 @@ pub async fn feeds(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>) {
                 let category = feed.category;
                 let url = feed.url;
                 let channel = feed.channel;
-                let last_modified = feed.published;
+                let mut last_modified = feed.published;
                 let feed = match reqwest::get(url.clone()).await {
                     Ok(response) => match response.text().await {
                         Ok(feed) => feed,
@@ -81,7 +80,12 @@ pub async fn feeds(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>) {
                 };
 
                 for entry in feed.entries {
-                    if entry.published.unwrap() > last_modified {
+                    let entry_published = match entry.published {
+                        Some(entry_published) => entry_published,
+                        None => return,
+                    };
+
+                    if entry_published > last_modified {
                         if let Err(error) = client_clone.lock().await.send(Command::PRIVMSG(
                             channel.clone(),
                             match entry.title {
@@ -106,12 +110,14 @@ pub async fn feeds(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>) {
                                 category: category.clone(),
                                 url: url.clone(),
                                 channel: channel.clone(),
-                                published: entry.published.unwrap(),
+                                published: entry_published,
                             },
                             |f: &&Feed| f.id == id,
                         ) {
                             println!("Problem updating published time.");
                         }
+
+                        last_modified = entry_published;
                     }
                 }
             });
