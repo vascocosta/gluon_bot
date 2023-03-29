@@ -79,7 +79,7 @@ pub async fn feeds(
                 let url = feed.url;
                 let channel = feed.channel;
                 let mut last_modified = feed.published;
-                let feed = match reqwest::get(url.clone()).await {
+                let feed = match reqwest::get(&url).await {
                     Ok(response) => match response.text().await {
                         Ok(feed) => feed,
                         Err(_) => return,
