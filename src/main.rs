@@ -47,10 +47,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
         tasks::base::external_message(client_clone).await;
     });
 
+    let options_clone = Arc::clone(&options);
     let client_clone = Arc::clone(&client);
     let db_clone = Arc::clone(&db);
 
-    task::spawn(async move { tasks::feeds::feeds(client_clone, db_clone).await });
+    task::spawn(async move { tasks::feeds::feeds(options_clone, client_clone, db_clone).await });
 
     // Main loop that continously gets IRC messages from an asynchronous stream.
     // Match any PRIVMSG received from the asynchronous stream of messages.

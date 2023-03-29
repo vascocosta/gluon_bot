@@ -3,6 +3,7 @@ use chrono::{DateTime, Utc};
 use feed_rs::parser;
 use irc::client::prelude::Command;
 use irc::client::Client;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::task;
@@ -42,9 +43,20 @@ impl CsvRecord for Feed {
     }
 }
 
-pub async fn feeds(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>) {
+pub async fn feeds(
+    options: Arc<HashMap<String, String>>,
+    client: Arc<Mutex<Client>>,
+    db: Arc<Mutex<Database>>,
+) {
     loop {
-        sleep(Duration::from_secs(300)).await;
+        sleep(Duration::from_secs(match options.get("feed_refresh") {
+            Some(feed_refresh) => match feed_refresh.parse() {
+                Ok(feed_refresh) => feed_refresh,
+                Err(_) => 300,
+            },
+            None => 300,
+        }))
+        .await;
 
         let feeds: Vec<Feed> = match db.lock().await.select("feeds", |_| true) {
             Ok(feeds) => match feeds {
@@ -71,7 +83,7 @@ pub async fn feeds(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>) {
                     Ok(response) => match response.text().await {
                         Ok(feed) => feed,
                         Err(_) => return,
-                    }
+                    },
                     Err(_) => return,
                 };
                 let feed = match parser::parse(feed.as_bytes()) {
@@ -92,16 +104,16 @@ pub async fn feeds(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>) {
                         if let Err(error) = client_clone.lock().await.send(Command::PRIVMSG(
                             channel.clone(),
                             match entry.title {
-                                    Some(title) => format!("\x02[{}]\x02", title.content),
-                                    None => String::from(""),
-                            }
+                                Some(title) => format!("\x02[{}]\x02", title.content),
+                                None => String::from(""),
+                            },
                         )) {
                             eprintln!("{error}");
                         }
 
                         if let Err(error) = client_clone.lock().await.send(Command::PRIVMSG(
                             channel.clone(),
-                            entry.links[0].href.clone()
+                            entry.links[0].href.clone(),
                         )) {
                             eprintln!("{error}");
                         }
