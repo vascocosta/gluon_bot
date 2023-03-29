@@ -52,6 +52,24 @@ impl CsvRecord for Event {
     }
 }
 
+struct Notification {
+    channel: String,
+    mentions: String,
+}
+
+impl CsvRecord for Notification {
+    fn from_fields(fields: &[String]) -> Self {
+        Self {
+            channel: fields[0].clone(),
+            mentions: fields[1].clone(),
+        }
+    }
+
+    fn to_fields(&self) -> Vec<String> {
+        vec![self.channel.clone(), self.mentions.clone()]
+    }
+}
+
 fn calculate_hash<T: Hash>(t: &T) -> u64 {
     let mut s = DefaultHasher::new();
 
@@ -92,6 +110,23 @@ pub async fn next(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>) {
                     ),
                 )) {
                     eprintln!("{error}");
+                }
+
+                let notifications: Option<Vec<Notification>> =
+                    match db.lock().await.select("notifications", |n: &Notification| {
+                        n.channel.to_lowercase() == event.channel.clone()
+                    }) {
+                        Ok(notifications) => notifications,
+                        Err(_) => None,
+                    };
+
+                if let Some(notifications) = notifications {
+                    if let Err(error) = client.lock().await.send(Command::PRIVMSG(
+                        event.channel.clone(),
+                        notifications[0].mentions.clone(),
+                    )) {
+                        eprintln!("{error}");
+                    }
                 }
 
                 hashes.push(hash);
