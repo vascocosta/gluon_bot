@@ -92,7 +92,7 @@ pub async fn feeds(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>) {
                         if let Err(error) = client_clone.lock().await.send(Command::PRIVMSG(
                             channel.clone(),
                             match entry.title {
-                                    Some(title) => title.content,
+                                    Some(title) => format!("\x02[{}]\x02", title.content),
                                     None => String::from(""),
                             }
                         )) {
