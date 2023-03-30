@@ -86,9 +86,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 } else {
                     task::spawn(async move {
                         if let Some(url) = utils::find_url(&message) {
-                            if let Some(title) = utils::find_title(url).await {
-                                if let Err(error) = sender.send_privmsg(&target, title) {
-                                    eprint!("{error}");
+                            if let Ok(title) = utils::find_title(url).await {
+                                if let Some(title) = title {
+                                    if let Err(error) = sender.send_privmsg(&target, title) {
+                                        eprint!("{error}");
+                                    }
                                 }
                             }
                         }
