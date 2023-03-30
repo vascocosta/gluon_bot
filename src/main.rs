@@ -1,6 +1,7 @@
 mod commands;
 mod database;
 mod tasks;
+mod utils;
 
 use commands::BotCommand;
 use database::Database;
@@ -79,6 +80,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
                             if let Err(error) = sender.send_privmsg(&target, output) {
                                 eprintln!("{error}");
+                            }
+                        }
+                    });
+                } else {
+                    task::spawn(async move {
+                        if let Some(url) = utils::find_url(&message) {
+                            if let Some(title) = utils::find_title(url).await {
+                                if let Err(error) = sender.send_privmsg(&target, title) {
+                                    eprint!("{error}");
+                                }
                             }
                         }
                     });

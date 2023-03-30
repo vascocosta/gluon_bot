@@ -120,6 +120,7 @@ impl Database {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn delete<T, P>(&self, from: &str, where_filter: P) -> Result<(), Box<dyn Error>>
     where
         T: CsvRecord + PartialEq,
