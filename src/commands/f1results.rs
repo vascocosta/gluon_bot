@@ -44,10 +44,10 @@ pub async fn f1results(args: &[String]) -> String {
     };
     let mut output: String = String::new();
 
-    for row in document.select(&row_selector).take(7) {
+    for (index, row) in document.select(&row_selector).take(11).enumerate() {
         for (index, cell) in row.select(&Selector::parse("td").unwrap()).enumerate() {
             if index == 3 {
-                let entry: String = cell
+                let cell: String = cell
                     .text()
                     .collect::<String>()
                     .trim()
@@ -55,23 +55,22 @@ pub async fn f1results(args: &[String]) -> String {
                     .replace("\r", "")
                     .split_whitespace()
                     .collect();
-                output = format!("{}{} ", output, &entry[entry.len() - 3..]);
-            } else if index == 0 || index == 2 || index == 4 {
-                ()
-            } else {
-                output = format!(
-                    "{}{} ",
-                    output,
-                    cell.text()
-                        .collect::<String>()
-                        .trim()
-                        .replace("\n", "")
-                        .replace("\r", "")
-                );
+                output = format!("{}{} ", output, &cell[cell.len() - 3..]);
+            } else if index != 0 && index != 2 && index != 4 {
+                let cell: String = cell.text().collect::<String>().trim().to_string();
+
+                if !cell.is_empty() {
+                    output = format!("{}{} ", output, cell);
+                }
             }
         }
-        output = format!("{}\r\n", output);
+
+        if index > 0 && index < 10 {
+            output = format!("{}| ", output);
+        } else {
+            output = format!("{}", output);
+        }
     }
 
-    format!("{}\r\nSource: {base_url}/{EVENT}/{session}.html", output)
+    format!("{output}\r\n{base_url}/{EVENT}/{session}.html")
 }
