@@ -1,5 +1,6 @@
 mod base;
 mod city;
+mod f1results;
 mod next;
 mod omdb;
 mod rates;
@@ -46,6 +47,7 @@ impl<'a> BotCommand<'a> {
             "ask" => base::ask(&self.args, db).await,
             "city" => city::city(&self.args, db).await,
             "date" | "time" => base::date_time().await,
+            "f1results" => f1results::f1results(&self.args).await,
             "hello" => base::hello(&self.nick).await,
             "imdb" | "omdb" => omdb::omdb(&self.args, self.options).await,
             "next" => next::next(&self.args, &self.nick, &self.target, db).await,
