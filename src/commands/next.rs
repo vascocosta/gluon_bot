@@ -1,4 +1,5 @@
 use crate::database::{CsvRecord, Database};
+use crate::tasks::next::Notification;
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use std::sync::Arc;
@@ -116,5 +117,63 @@ pub async fn next(args: &[String], nick: &str, target: &str, db: Arc<Mutex<Datab
         )
     } else {
         String::from("Could not find next event.")
+    }
+}
+
+pub async fn notify(nick: &str, target: &str, db: Arc<Mutex<Database>>) -> String {
+    let notifications: Option<Vec<Notification>> =
+        match db.lock().await.select("notifications", |n: &Notification| {
+            n.channel.to_lowercase() == target.to_lowercase()
+        }) {
+            Ok(notifications) => notifications,
+            Err(_) => return String::from("Could not get notifications."),
+        };
+
+    match notifications {
+        Some(notifications) => {
+            if notifications[0]
+                .mentions
+                .to_lowercase()
+                .contains(&nick.to_lowercase())
+            {
+                match db.lock().await.update(
+                    "notifications",
+                    Notification {
+                        channel: notifications[0].channel.clone(),
+                        mentions: notifications[0]
+                            .mentions
+                            .replace(&nick.to_lowercase(), "")
+                            .trim()
+                            .to_string(),
+                    },
+                    |n: &&Notification| n.channel.to_lowercase() == target.to_lowercase(),
+                ) {
+                    Ok(_) => String::from("Notifications disabled on this channel."),
+                    Err(_) => String::from("Could not update notifications for this channel."),
+                }
+            } else {
+                match db.lock().await.update(
+                    "notifications",
+                    Notification {
+                        channel: notifications[0].channel.clone(),
+                        mentions: format!("{} {}", notifications[0].mentions, nick),
+                    },
+                    |n: &&Notification| n.channel.to_lowercase() == target.to_lowercase(),
+                ) {
+                    Ok(_) => String::from("Notifications enabled on this channel."),
+                    Err(_) => String::from("Could not update notifications for this channel."),
+                }
+            }
+        }
+        None => match db.lock().await.insert(
+            "notifications",
+            Notification {
+                channel: String::from(target),
+                mentions: String::from(nick),
+            },
+        ) {
+            Ok(_) => String::from("Notifications enabled on this channel."),
+            Err(_) => String::from("Could not update notifications for this channel."),
+        },
     }
 }

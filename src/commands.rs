@@ -51,6 +51,7 @@ impl<'a> BotCommand<'a> {
             "hello" => base::hello(&self.nick).await,
             "imdb" | "omdb" => omdb::omdb(&self.args, self.options).await,
             "next" => next::next(&self.args, &self.nick, &self.target, db).await,
+            "notify" => next::notify(&self.nick, &self.target, db).await,
             "ping" => base::ping().await,
             "quote" => base::quote(&self.args, &self.target, db).await,
             "rates" => rates::rates(&self.args, self.options).await,

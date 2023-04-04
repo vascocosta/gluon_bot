@@ -52,9 +52,10 @@ impl CsvRecord for Event {
     }
 }
 
-struct Notification {
-    channel: String,
-    mentions: String,
+#[derive(PartialEq)]
+pub struct Notification {
+    pub channel: String,
+    pub mentions: String,
 }
 
 impl CsvRecord for Notification {
