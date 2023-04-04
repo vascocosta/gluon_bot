@@ -62,7 +62,7 @@ impl CsvRecord for TimeZone {
 }
 
 pub async fn next(args: &[String], nick: &str, target: &str, db: Arc<Mutex<Database>>) -> String {
-    let events: Vec<Event> = match db.lock().await.select("events", |e: &Event| {
+    let mut events: Vec<Event> = match db.lock().await.select("events", |e: &Event| {
         e.datetime > Utc::now()
             && e.channel.to_lowercase() == target.to_lowercase()
             && (e.category.to_lowercase().contains(&args.join(" "))
@@ -98,6 +98,8 @@ pub async fn next(args: &[String], nick: &str, target: &str, db: Arc<Mutex<Datab
             Err(_) => Tz::CET,
         };
         let duration = events[0].datetime.signed_duration_since(Utc::now());
+
+        events.sort_by(|a, b| a.datetime.cmp(&b.datetime));
 
         format!(
             "{} | {} {} {} | {} day(s), {} hour(s), {} minute(s)",
