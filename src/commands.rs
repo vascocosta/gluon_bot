@@ -44,6 +44,7 @@ impl<'a> BotCommand<'a> {
 
     pub async fn handle(&self, db: Arc<Mutex<Database>>) -> String {
         match &self.name[..] {
+            "alarm" => base::alarm(&self.args, &self.nick, db).await,
             "ask" => base::ask(&self.args, db).await,
             "city" => city::city(&self.args, db).await,
             "date" | "time" => base::date_time().await,

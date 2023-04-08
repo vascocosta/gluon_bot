@@ -1,5 +1,6 @@
 use crate::database::{CsvRecord, Database};
-use chrono::Utc;
+use chrono::{DateTime, Datelike, Utc};
+use chrono_tz::Tz;
 use rand::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -43,6 +44,24 @@ impl CsvRecord for Quote {
     }
 }
 
+struct TimeZone {
+    nick: String,
+    name: String,
+}
+
+impl CsvRecord for TimeZone {
+    fn from_fields(fields: &[String]) -> Self {
+        Self {
+            nick: fields[0].clone(),
+            name: fields[1].clone(),
+        }
+    }
+
+    fn to_fields(&self) -> Vec<String> {
+        vec![self.nick.clone(), self.name.clone()]
+    }
+}
+
 #[derive(PartialEq)]
 struct WeatherSetting {
     nick: String,
@@ -59,6 +78,95 @@ impl CsvRecord for WeatherSetting {
 
     fn to_fields(&self) -> Vec<String> {
         vec![self.nick.clone(), self.location.clone()]
+    }
+}
+
+pub async fn alarm(args: &[String], nick: &str, db: Arc<Mutex<Database>>) -> String {
+    if args.len() < 1 {
+        return String::from("Please provide a time.");
+    }
+
+    let time_zones: Vec<TimeZone> = match db.lock().await.select("time_zones", |tz: &TimeZone| {
+        tz.nick.to_lowercase() == nick.to_lowercase()
+    }) {
+        Ok(time_zones_result) => match time_zones_result {
+            Some(time_zones) => time_zones,
+            None => vec![TimeZone {
+                nick: String::new(),
+                name: String::from("Europe/Berlin"),
+            }],
+        },
+        Err(_) => vec![TimeZone {
+            nick: String::new(),
+            name: String::from("Europe/Berlin"),
+        }],
+    };
+    let tz: Tz = match time_zones[0].name.parse() {
+        Ok(tz) => tz,
+        Err(_) => Tz::CET,
+    };
+    let now = Utc::now();
+    let now = now.with_timezone(&tz);
+    let day = now.day();
+    let month = now.month();
+    let year = now.year();
+    let sign = &now.format("%:z").to_string()[..=0];
+    let offset = &now.format("%:z").to_string()[1..];
+    let mut split_offset = offset.split(":");
+    let offset_hour: u64 = match split_offset.next() {
+        Some(offset_hour) => match offset_hour.parse() {
+            Ok(offset_hour) => offset_hour,
+            Err(_) => 0,
+        },
+        None => 0,
+    };
+    let offset_minute: u64 = match split_offset.next() {
+        Some(offset_minute) => match offset_minute.parse() {
+            Ok(offset_minute) => offset_minute,
+            Err(_) => 0,
+        },
+        None => 0,
+    };
+    let mut split_time = args[0].split(":");
+    let time_hour: u64 = match split_time.next() {
+        Some(time_hour) => match time_hour.parse() {
+            Ok(time_hour) => time_hour,
+            Err(_) => return String::from("Please provide a time in your timezone (ex: 18:30)."),
+        },
+        None => return String::from("Please provide a time in your timezone (ex: 18:30)."),
+    };
+    let time_minute: u64 = match split_time.next() {
+        Some(time_minute) => match time_minute.parse() {
+            Ok(time_minute) => time_minute,
+            Err(_) => return String::from("Please provide a time in your timezone (ex: 18:30)."),
+        },
+        None => return String::from("Please provide a time in your timezone (ex: 18:30)."),
+    };
+    let utc_hour: u64;
+    let utc_minute: u64;
+    if sign == "+" {
+        utc_hour = time_hour - offset_hour;
+        utc_minute = time_minute - offset_minute;
+    } else {
+        utc_hour = time_hour + offset_hour;
+        utc_minute = time_minute + offset_minute;
+    }
+    let alarm_str = format!(
+        "{year}-{month}-{day} {:02}:{:02}:00 UTC",
+        utc_hour, utc_minute
+    );
+    let alarm_dt: DateTime<Utc> = match alarm_str.parse() {
+        Ok(alarm_dt) => alarm_dt,
+        Err(_) => return String::from("Please provide a time in your timezone (ex: 18:30)."),
+    };
+    let duration = alarm_dt - Utc::now();
+
+    if duration.num_seconds() > 0 {
+        time::sleep(Duration::from_secs(duration.num_seconds() as u64)).await;
+
+        String::from(format!("{nick}: Your alarm is ringing!"))
+    } else {
+        String::from("Time must be in the future.")
     }
 }
 
