@@ -1,5 +1,5 @@
 use crate::database::{CsvRecord, Database};
-use chrono::{DateTime, Datelike, Utc};
+use chrono::{DateTime, Datelike, Offset, Utc};
 use chrono_tz::Tz;
 use rand::prelude::*;
 use std::collections::HashMap;
@@ -107,58 +107,17 @@ pub async fn alarm(args: &[String], nick: &str, db: Arc<Mutex<Database>>) -> Str
     };
     let now = Utc::now();
     let now = now.with_timezone(&tz);
+    let utc_offset = now.offset().fix().local_minus_utc();
+    let now = Utc::now();
     let day = now.day();
     let month = now.month();
     let year = now.year();
-    let sign = &now.format("%:z").to_string()[..=0];
-    let offset = &now.format("%:z").to_string()[1..];
-    let mut split_offset = offset.split(":");
-    let offset_hour: u64 = match split_offset.next() {
-        Some(offset_hour) => match offset_hour.parse() {
-            Ok(offset_hour) => offset_hour,
-            Err(_) => 0,
-        },
-        None => 0,
-    };
-    let offset_minute: u64 = match split_offset.next() {
-        Some(offset_minute) => match offset_minute.parse() {
-            Ok(offset_minute) => offset_minute,
-            Err(_) => 0,
-        },
-        None => 0,
-    };
-    let mut split_time = args[0].split(":");
-    let time_hour: u64 = match split_time.next() {
-        Some(time_hour) => match time_hour.parse() {
-            Ok(time_hour) => time_hour,
-            Err(_) => return String::from("Please provide a time in your timezone (ex: 18:30)."),
-        },
-        None => return String::from("Please provide a time in your timezone (ex: 18:30)."),
-    };
-    let time_minute: u64 = match split_time.next() {
-        Some(time_minute) => match time_minute.parse() {
-            Ok(time_minute) => time_minute,
-            Err(_) => return String::from("Please provide a time in your timezone (ex: 18:30)."),
-        },
-        None => return String::from("Please provide a time in your timezone (ex: 18:30)."),
-    };
-    let utc_hour: u64;
-    let utc_minute: u64;
-    if sign == "+" {
-        utc_hour = time_hour - offset_hour;
-        utc_minute = time_minute - offset_minute;
-    } else {
-        utc_hour = time_hour + offset_hour;
-        utc_minute = time_minute + offset_minute;
-    }
-    let alarm_str = format!(
-        "{year}-{month}-{day} {:02}:{:02}:00 UTC",
-        utc_hour, utc_minute
-    );
+    let alarm_str = format!("{year}-{month}-{day} {}:00 UTC", args[0]);
     let alarm_dt: DateTime<Utc> = match alarm_str.parse() {
         Ok(alarm_dt) => alarm_dt,
         Err(_) => return String::from("Please provide a time in your timezone (ex: 18:30)."),
     };
+    let alarm_dt = alarm_dt - chrono::Duration::seconds(utc_offset as i64);
     let duration = alarm_dt - Utc::now();
 
     if duration.num_seconds() > 0 {
