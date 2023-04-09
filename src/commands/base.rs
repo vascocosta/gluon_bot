@@ -138,7 +138,7 @@ pub async fn alarm(
 
         time::sleep(Duration::from_secs(duration.num_seconds() as u64)).await;
 
-        String::from(format!("{nick}: Your alarm is ringing!"))
+        String::from(format!("{nick}: Your alarm is up!"))
     } else {
         String::from("Time must be in the future.")
     }
@@ -212,7 +212,12 @@ pub async fn quote(args: &[String], target: &str, db: Arc<Mutex<Database>>) -> S
     }
 }
 
-pub async fn reminder(args: &[String], nick: &str) -> String {
+pub async fn reminder(
+    args: &[String],
+    nick: &str,
+    target: &str,
+    client: Arc<Mutex<Client>>,
+) -> String {
     if args.len() < 1 {
         return String::from("Please provide a duration in minutes.");
     }
@@ -221,6 +226,13 @@ pub async fn reminder(args: &[String], nick: &str) -> String {
         Ok(minutes) => minutes,
         Err(_) => return String::from("Please provide a duration in integer minutes."),
     };
+
+    if let Err(error) = client.lock().await.send(Command::PRIVMSG(
+        String::from(target),
+        format!("Reminder set for {} minute(s) from now.", minutes),
+    )) {
+        eprintln!("{error}");
+    }
 
     time::sleep(Duration::from_secs(minutes * 60)).await;
 

@@ -57,7 +57,9 @@ impl<'a> BotCommand<'a> {
             "ping" => base::ping().await,
             "quote" => base::quote(&self.args, &self.target, db).await,
             "rates" => rates::rates(&self.args, self.options).await,
-            "remind" | "reminder" => base::reminder(&self.args, &self.nick).await,
+            "remind" | "reminder" => {
+                base::reminder(&self.args, &self.nick, &self.target, client).await
+            }
             "weather" => base::weather(&self.args, &self.nick, self.options, db).await,
             _ => "Command not found".to_string(),
         }
