@@ -6,6 +6,7 @@ mod omdb;
 mod rates;
 
 use crate::database::Database;
+use irc::client::Client;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -42,9 +43,9 @@ impl<'a> BotCommand<'a> {
         })
     }
 
-    pub async fn handle(&self, db: Arc<Mutex<Database>>) -> String {
+    pub async fn handle(&self, db: Arc<Mutex<Database>>, client: Arc<Mutex<Client>>) -> String {
         match &self.name[..] {
-            "alarm" => base::alarm(&self.args, &self.nick, db).await,
+            "alarm" => base::alarm(&self.args, &self.nick, &self.target, db, client).await,
             "ask" => base::ask(&self.args, db).await,
             "city" => city::city(&self.args, db).await,
             "date" | "time" => base::date_time().await,

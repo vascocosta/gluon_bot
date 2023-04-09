@@ -72,11 +72,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 if message.len() > 1 && message.starts_with(prefix) {
                     let options = Arc::clone(&options);
                     let db = Arc::clone(&db);
+                    let client = Arc::clone(&client);
 
                     task::spawn(async move {
                         if let Ok(bot_command) = BotCommand::new(&message, nick, &target, &options)
                         {
-                            let output = bot_command.handle(db).await;
+                            let output = bot_command.handle(db, client).await;
 
                             if let Err(error) = sender.send_privmsg(&target, output) {
                                 eprintln!("{error}");

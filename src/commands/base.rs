@@ -1,6 +1,8 @@
 use crate::database::{CsvRecord, Database};
 use chrono::{DateTime, Datelike, Offset, Utc};
 use chrono_tz::Tz;
+use irc::client::prelude::Command;
+use irc::client::Client;
 use rand::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -81,9 +83,15 @@ impl CsvRecord for WeatherSetting {
     }
 }
 
-pub async fn alarm(args: &[String], nick: &str, db: Arc<Mutex<Database>>) -> String {
+pub async fn alarm(
+    args: &[String],
+    nick: &str,
+    target: &str,
+    db: Arc<Mutex<Database>>,
+    client: Arc<Mutex<Client>>,
+) -> String {
     if args.len() < 1 {
-        return String::from("Please provide a time.");
+        return String::from("Please provide a time in your time zone.");
     }
 
     let time_zones: Vec<TimeZone> = match db.lock().await.select("time_zones", |tz: &TimeZone| {
@@ -115,12 +123,19 @@ pub async fn alarm(args: &[String], nick: &str, db: Arc<Mutex<Database>>) -> Str
     let alarm_str = format!("{year}-{month}-{day} {}:00 UTC", args[0]);
     let alarm_dt: DateTime<Utc> = match alarm_str.parse() {
         Ok(alarm_dt) => alarm_dt,
-        Err(_) => return String::from("Please provide a time in your timezone (ex: 18:30)."),
+        Err(_) => return String::from("Please provide a time in your time zone (ex: 18:30)."),
     };
     let alarm_dt = alarm_dt - chrono::Duration::seconds(utc_offset as i64);
     let duration = alarm_dt - Utc::now();
 
     if duration.num_seconds() > 0 {
+        if let Err(error) = client.lock().await.send(Command::PRIVMSG(
+            String::from(target),
+            format!("Alarm set to {} {}.", args[0], tz.to_string()),
+        )) {
+            eprintln!("{error}");
+        }
+
         time::sleep(Duration::from_secs(duration.num_seconds() as u64)).await;
 
         String::from(format!("{nick}: Your alarm is ringing!"))
