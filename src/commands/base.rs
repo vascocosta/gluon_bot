@@ -46,6 +46,7 @@ impl CsvRecord for Quote {
     }
 }
 
+#[derive(PartialEq)]
 struct TimeZone {
     nick: String,
     name: String,
@@ -270,6 +271,45 @@ pub async fn reminder(
         format!("{}: Time is up!", nick)
     }
 }
+
+pub async fn time_zone(args: &[String], nick: &str, db: Arc<Mutex<Database>>) -> String {
+    let time_zones: Vec<TimeZone> = match db.lock().await.select("time_zones", |tz: &TimeZone| {
+        tz.nick.to_lowercase() == nick.to_lowercase()
+    }) {
+        Ok(time_zones_result) => match time_zones_result {
+            Some(time_zones) => time_zones,
+            None => vec![TimeZone {
+                nick: String::new(),
+                name: String::from("Europe/Berlin"),
+            }],
+        },
+        Err(_) => vec![TimeZone {
+            nick: String::new(),
+            name: String::from("Europe/Berlin"),
+        }],
+    };
+    let tz: Tz = match time_zones[0].name.parse() {
+        Ok(tz) => tz,
+        Err(_) => Tz::CET,
+    };
+
+    if args.len() == 0 {
+        format!("Your current time zone: {}", tz.to_string())
+    } else {
+        match db.lock().await.update(
+            "time_zones",
+            TimeZone {
+                nick: String::from(nick),
+                name: args.concat(),
+            },
+            |tz: &&TimeZone| tz.nick.to_lowercase() == nick.to_lowercase(),
+        ) {
+            Ok(_) => String::from("Your time zone was successfully updated."),
+            Err(_) => String::from("Problem updating your time zone."),
+        }
+    }
+}
+
 pub async fn weather(
     args: &[String],
     nick: &str,

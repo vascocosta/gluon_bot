@@ -60,6 +60,7 @@ impl<'a> BotCommand<'a> {
             "remind" | "reminder" => {
                 base::reminder(&self.args, &self.nick, &self.target, client).await
             }
+            "timezone" | "tz" => base::time_zone(&self.args, &self.nick, db).await,
             "weather" => base::weather(&self.args, &self.nick, self.options, db).await,
             _ => "Command not found".to_string(),
         }
