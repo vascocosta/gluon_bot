@@ -165,7 +165,11 @@ pub async fn alarm(
         time::sleep(corrected_duration).await;
     }
 
-    String::from(format!("{nick}: Your alarm is up!"))
+    if args.len() > 1 {
+        format!("{}: {}", nick, args[1..].join(" "))
+    } else {
+        format!("{}: Alarm is up!", nick)
+    }
 }
 
 pub async fn ask(args: &[String], db: Arc<Mutex<Database>>) -> String {
@@ -260,9 +264,12 @@ pub async fn reminder(
 
     time::sleep(Duration::from_secs(minutes * 60)).await;
 
-    format!("{nick}: Time is up!")
+    if args.len() > 1 {
+        format!("{}: {}", nick, args[1..].join(" "))
+    } else {
+        format!("{}: Time is up!", nick)
+    }
 }
-
 pub async fn weather(
     args: &[String],
     nick: &str,
