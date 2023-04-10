@@ -128,20 +128,44 @@ pub async fn alarm(
     let alarm_dt = alarm_dt - chrono::Duration::seconds(utc_offset as i64);
     let duration = alarm_dt - Utc::now();
 
+    if let Err(error) = client.lock().await.send(Command::PRIVMSG(
+        String::from(target),
+        format!("Alarm set to {} {}.", args[0], tz.to_string()),
+    )) {
+        eprintln!("{error}");
+    }
+
     if duration.num_seconds() > 0 {
         if let Err(error) = client.lock().await.send(Command::PRIVMSG(
             String::from(target),
-            format!("Alarm set to {} {}.", args[0], tz.to_string()),
+            format!(
+                "Up in {} hours and {} minutes.",
+                duration.num_hours(),
+                duration.num_minutes()
+            ),
         )) {
             eprintln!("{error}");
         }
 
         time::sleep(Duration::from_secs(duration.num_seconds() as u64)).await;
-
-        String::from(format!("{nick}: Your alarm is up!"))
     } else {
-        String::from("Time must be in the future.")
+        let corrected_duration = Duration::from_secs((duration.num_seconds() + 86400) as u64);
+
+        if let Err(error) = client.lock().await.send(Command::PRIVMSG(
+            String::from(target),
+            format!(
+                "Up in {} hours and {} minutes.",
+                corrected_duration.as_secs() / (60 * 60),
+                (corrected_duration.as_secs() / 60) % 60
+            ),
+        )) {
+            eprintln!("{error}");
+        }
+
+        time::sleep(corrected_duration).await;
     }
+
+    String::from(format!("{nick}: Your alarm is up!"))
 }
 
 pub async fn ask(args: &[String], db: Arc<Mutex<Database>>) -> String {
