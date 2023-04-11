@@ -62,16 +62,16 @@ pub async fn first(nick: &str, target: &str, db: Arc<Mutex<Database>>) -> String
             Some(time_zones) => time_zones,
             None => {
                 return String::from(
-                    "Could not get your time zone.\n
-                    To play this game set one with the timezone command.\n
+                    "Could not get your time zone.\r\n
+                    To play this game set one with the timezone command.\r\n
                     Example: !timezone Europe/Berlin",
                 )
             }
         },
         Err(_) => {
             return String::from(
-                "Could not get your time zone.\n
-                To play this game set one with the timezone command.\n
+                "Could not get your time zone.\r\n
+                To play this game set one with the timezone command.\r\n
                 Example: !timezone Europe/Berlin",
             )
         }
