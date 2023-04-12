@@ -55,9 +55,77 @@ impl CsvRecord for TimeZone {
     }
 }
 
-pub async fn first(nick: &str, target: &str, db: Arc<Mutex<Database>>) -> String {
-    if Utc::now().hour() > 11 {
-        return String::from("STATUS: closed (deadline is 12H00 UTC)");
+async fn show_results(
+    first_results: &mut [FirstResult],
+    nick: Option<&str>,
+    target: &str,
+    client: Arc<Mutex<Client>>,
+) {
+    first_results.sort_by(|a, b| {
+        a.datetime
+            .with_timezone(&a.tz)
+            .to_string()
+            .cmp(&b.datetime.with_timezone(&b.tz).to_string())
+    });
+
+    for (position, result) in first_results.into_iter().take(5).enumerate() {
+        let re = match Regex::new(r"[^A-Za-z0-9]+") {
+            Ok(re) => re,
+            Err(_) => {
+                if let Err(error) = client.lock().await.send(Command::PRIVMSG(
+                    String::from(target),
+                    String::from("Could not print results."),
+                )) {
+                    eprintln!("{error}");
+                }
+
+                return;
+            }
+        };
+
+        match nick {
+            None => {
+                let nick = re.replace_all(&result.nick, "").to_uppercase();
+
+                if let Err(error) = client.lock().await.send(Command::PRIVMSG(
+                    String::from(target),
+                    format!(
+                        "{}. {} | {} ({})",
+                        position + 1,
+                        &nick[..3],
+                        result.datetime.with_timezone(&result.tz).time().to_string(),
+                        result
+                            .datetime
+                            .with_timezone(&result.tz)
+                            .timezone()
+                            .to_string(),
+                    ),
+                )) {
+                    eprintln!("{error}");
+                }
+            }
+            Some(nick) => {
+                if nick.to_lowercase() == result.nick.to_lowercase() {
+                    if let Err(error) = client.lock().await.send(Command::PRIVMSG(
+                        String::from(target),
+                        format!("You are currently P{}.", position + 1),
+                    )) {
+                        eprintln!("{error}");
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub async fn first(
+    nick: &str,
+    target: &str,
+    db: Arc<Mutex<Database>>,
+    client: Arc<Mutex<Client>>,
+) -> String {
+    if Utc::now().hour() > 14 {
+        return String::from("STATUS: closed (deadline is 15H00 UTC)");
     }
 
     let time_zones: Vec<TimeZone> = match db.lock().await.select("time_zones", |tz: &TimeZone| {
@@ -81,7 +149,6 @@ pub async fn first(nick: &str, target: &str, db: Arc<Mutex<Database>>) -> String
             )
         }
     };
-
     let tz: Tz = match time_zones[0].name.parse() {
         Ok(tz) => tz,
         Err(_) => return String::from("Your time zone is invalid."),
@@ -103,7 +170,21 @@ pub async fn first(nick: &str, target: &str, db: Arc<Mutex<Database>>) -> String
         return String::from("Problem registering your time.");
     }
 
-    String::from("Your time was successfully registered. Thank you for playing the first game.")
+    let mut first_results: Vec<FirstResult> =
+        match db.lock().await.select("first_results", |fr: &FirstResult| {
+            Utc::now().date_naive() == fr.datetime.date_naive()
+                && fr.target.to_lowercase() == target.to_lowercase()
+        }) {
+            Ok(first_results) => match first_results {
+                Some(first_results) => first_results,
+                None => return String::from("Could not get results."),
+            },
+            Err(_) => return String::from("Could not get results."),
+        };
+
+    show_results(&mut first_results, Some(nick), target, client).await;
+
+    String::from("Check the full results with !first_results.")
 }
 
 pub async fn first_results(
@@ -123,41 +204,11 @@ pub async fn first_results(
             Err(_) => return String::from("Could not get results."),
         };
 
-    first_results.sort_by(|a, b| {
-        a.datetime
-            .with_timezone(&a.tz)
-            .to_string()
-            .cmp(&b.datetime.with_timezone(&b.tz).to_string())
-    });
+    show_results(&mut first_results, None, target, client).await;
 
-    for (position, result) in first_results.into_iter().take(5).enumerate() {
-        let re = match Regex::new(r"[^A-Za-z0-9]+") {
-            Ok(re) => re,
-            Err(_) => return String::from("Could not print results."),
-        };
-        let nick = re.replace_all(&result.nick, "").to_uppercase();
-
-        if let Err(error) = client.lock().await.send(Command::PRIVMSG(
-            String::from(target),
-            format!(
-                "{}. {} | {} ({})",
-                position + 1,
-                &nick[..3],
-                result.datetime.with_timezone(&result.tz).time().to_string(),
-                result
-                    .datetime
-                    .with_timezone(&result.tz)
-                    .timezone()
-                    .to_string(),
-            ),
-        )) {
-            eprintln!("{error}");
-        }
-    }
-
-    if Utc::now().hour() < 12 {
-        String::from("STATUS: open (deadline is 12H00 UTC)")
+    if Utc::now().hour() < 15 {
+        String::from("STATUS: open (deadline is 15H00 UTC)")
     } else {
-        String::from("STATUS: closed (deadline is 12H00 UTC)")
+        String::from("STATUS: closed (deadline is 15H00 UTC)")
     }
 }
