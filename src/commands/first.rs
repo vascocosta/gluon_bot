@@ -133,25 +133,15 @@ pub async fn first(
     }) {
         Ok(time_zones_result) => match time_zones_result {
             Some(time_zones) => time_zones,
-            None => {
-                return String::from(
-                    "Could not get your time zone.\r\n
-                    To play this game set one with the timezone command.\r\n
-                    Example: !timezone Europe/Berlin",
-                )
-            }
+            None => return String::from("Set a time zone. Example: !timezone Europe/Berlin"),
         },
-        Err(_) => {
-            return String::from(
-                "Could not get your time zone.\r\n
-                To play this game set one with the timezone command.\r\n
-                Example: !timezone Europe/Berlin",
-            )
-        }
+        Err(_) => return String::from("Set a time zone. Example: !timezone Europe/Berlin"),
     };
     let tz: Tz = match time_zones[0].name.parse() {
         Ok(tz) => tz,
-        Err(_) => return String::from("Your time zone is invalid."),
+        Err(_) => {
+            return String::from("Your time zone is invalid. Example: !timezone Europe/Berlin")
+        }
     };
 
     if let Err(_) = db.lock().await.update(
