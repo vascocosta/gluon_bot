@@ -142,7 +142,7 @@ pub async fn alarm(
             format!(
                 "Up in {} hours and {} minutes.",
                 duration.num_hours(),
-                duration.num_minutes()
+                duration.num_minutes() % 60
             ),
         )) {
             eprintln!("{error}");
