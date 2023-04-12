@@ -1,5 +1,5 @@
 use crate::database::{CsvRecord, Database};
-use chrono::{DateTime, NaiveTime, Timelike, Utc};
+use chrono::{DateTime, Timelike, Utc};
 use chrono_tz::Tz;
 use irc::{client::Client, proto::Command};
 use regex::Regex;
@@ -56,7 +56,7 @@ impl CsvRecord for TimeZone {
 }
 
 pub async fn first(nick: &str, target: &str, db: Arc<Mutex<Database>>) -> String {
-    if Utc::now().hour() < 12 {
+    if Utc::now().hour() > 11 {
         return String::from("STATUS: closed (deadline is 12H00 UTC)");
     }
 
