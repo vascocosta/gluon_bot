@@ -124,8 +124,8 @@ pub async fn first(
     db: Arc<Mutex<Database>>,
     client: Arc<Mutex<Client>>,
 ) -> String {
-    if Utc::now().hour() > 14 {
-        return String::from("STATUS: closed (deadline is 15H00 UTC)");
+    if Utc::now().hour() > 20 {
+        return String::from("STATUS: closed (closes at 21H00 UTC)");
     }
 
     let time_zones: Vec<TimeZone> = match db.lock().await.select("time_zones", |tz: &TimeZone| {
@@ -143,6 +143,10 @@ pub async fn first(
             return String::from("Your time zone is invalid. Example: !timezone Europe/Berlin")
         }
     };
+
+    if Utc::now().with_timezone(&tz).hour() < 6 {
+        return format!("STATUS closed (opens at 06H00 {})", tz.to_string());
+    }
 
     if let Err(_) = db.lock().await.update(
         "first_results",
@@ -196,9 +200,9 @@ pub async fn first_results(
 
     show_results(&mut first_results, None, target, client).await;
 
-    if Utc::now().hour() < 15 {
-        String::from("STATUS: open (deadline is 15H00 UTC)")
+    if Utc::now().hour() < 21 {
+        String::from("STATUS: open (closes at 21H00 UTC)")
     } else {
-        String::from("STATUS: closed (deadline is 15H00 UTC)")
+        String::from("STATUS: closed (closes at 21H00 UTC)")
     }
 }
