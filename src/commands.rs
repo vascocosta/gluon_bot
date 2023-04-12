@@ -55,7 +55,7 @@ impl<'a> BotCommand<'a> {
             "first_results" => first::first_results(&self.target, db, client).await,
             "hello" => base::hello(&self.nick).await,
             "imdb" | "omdb" => omdb::omdb(&self.args, self.options).await,
-            "next" => next::next(&self.args, &self.nick, &self.target, db).await,
+            "next" | "n" => next::next(&self.args, &self.nick, &self.target, db).await,
             "notify" => next::notify(&self.nick, &self.target, db).await,
             "ping" => base::ping().await,
             "quote" => base::quote(&self.args, &self.target, db).await,
@@ -64,8 +64,8 @@ impl<'a> BotCommand<'a> {
                 base::reminder(&self.args, &self.nick, &self.target, client).await
             }
             "timezone" | "tz" => base::time_zone(&self.args, &self.nick, db).await,
-            "weather" => base::weather(&self.args, &self.nick, self.options, db).await,
-            _ => "Command not found".to_string(),
+            "weather" | "w" => base::weather(&self.args, &self.nick, self.options, db).await,
+            _ => "".to_string(),
         }
     }
 }
