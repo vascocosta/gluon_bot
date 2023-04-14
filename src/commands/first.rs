@@ -3,10 +3,10 @@ use chrono::{DateTime, Timelike, Utc};
 use chrono_tz::Tz;
 use irc::{client::Client, proto::Command};
 use regex::Regex;
-use std::{str::FromStr, sync::Arc};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 use tokio::sync::Mutex;
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 struct FirstStat {
     nick: String,
     points: u32,
@@ -31,7 +31,7 @@ impl CsvRecord for FirstStat {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 struct FirstResult {
     nick: String,
     target: String,
@@ -214,37 +214,108 @@ pub async fn first(
     String::new()
 }
 
-pub async fn first_stats(db: Arc<Mutex<Database>>) -> String {
-    let mut first_stats: Vec<FirstStat> = match db.lock().await.select("first_stats", |_| true) {
-        Ok(first_stats) => match first_stats {
-            Some(first_stats) => first_stats,
-            None => return String::from("Could not find any stats."),
-        },
-        Err(_) => return String::from("Could not find any stats."),
-    };
+pub async fn first_stats(target: &str, db: Arc<Mutex<Database>>) -> String {
+    let first_results: Vec<FirstResult> =
+        match db.lock().await.select("first_results", |fr: &FirstResult| {
+            fr.target.to_lowercase() == target.to_lowercase()
+        }) {
+            Ok(first_results) => match first_results {
+                Some(first_results) => first_results,
+                None => return String::from("Could not get results."),
+            },
+            Err(_) => return String::from("Could not get results."),
+        };
 
-    first_stats.sort_by(|a, b| b.points.cmp(&a.points));
+    let mut days: HashMap<String, Vec<FirstResult>> = HashMap::new();
+    let mut stats: HashMap<String, FirstStat> = HashMap::new();
+
+    for first_result in first_results {
+        days.entry(String::from(&first_result.datetime.to_string()[..=10]))
+            .or_insert(Vec::default())
+            .push(first_result);
+    }
+
+    let points: [u32; 10] = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+
+    for (_, mut first_results) in days {
+        first_results.sort_by(|a, b| {
+            a.datetime
+                .with_timezone(&a.tz)
+                .to_string()
+                .cmp(&b.datetime.with_timezone(&b.tz).to_string())
+        });
+
+        for (position, result) in first_results.into_iter().enumerate().take(10) {
+            let reference = stats.entry(result.nick.clone()).or_insert(FirstStat {
+                nick: String::from(result.nick.clone()),
+                points: 0,
+                wins: 0,
+            });
+
+            reference.points += points[position];
+
+            if position == 0 {
+                reference.wins += 1;
+            }
+        }
+    }
+
+    let mut stats: Vec<FirstStat> = stats.into_values().collect();
+
+    stats.sort_by(|a, b| b.points.cmp(&a.points));
 
     let mut output: String = Default::default();
 
-    for (position, first_stat) in first_stats.into_iter().enumerate() {
-        if first_stat.points > 0 {
+    for (position, stat) in stats.into_iter().enumerate() {
+        if stat.points > 0 {
             let re = Regex::new(r"[^A-Za-z0-9]+").unwrap();
-            let nick = re.replace_all(&first_stat.nick, "").to_uppercase();
+            let nick = re.replace_all(&stat.nick, "").to_uppercase();
 
             output = format!(
                 "{}{}. {} {} ({} wins) | ",
                 output,
                 position + 1,
                 &nick[..3],
-                first_stat.points,
-                first_stat.wins
+                stat.points,
+                stat.wins
             );
         }
     }
 
     format!("{}", output.trim_end_matches(" | "))
 }
+
+// pub async fn first_stats(db: Arc<Mutex<Database>>) -> String {
+//     let mut first_stats: Vec<FirstStat> = match db.lock().await.select("first_stats", |_| true) {
+//         Ok(first_stats) => match first_stats {
+//             Some(first_stats) => first_stats,
+//             None => return String::from("Could not find any stats."),
+//         },
+//         Err(_) => return String::from("Could not find any stats."),
+//     };
+
+//     first_stats.sort_by(|a, b| b.points.cmp(&a.points));
+
+//     let mut output: String = Default::default();
+
+//     for (position, first_stat) in first_stats.into_iter().enumerate() {
+//         if first_stat.points > 0 {
+//             let re = Regex::new(r"[^A-Za-z0-9]+").unwrap();
+//             let nick = re.replace_all(&first_stat.nick, "").to_uppercase();
+
+//             output = format!(
+//                 "{}{}. {} {} ({} wins) | ",
+//                 output,
+//                 position + 1,
+//                 &nick[..3],
+//                 first_stat.points,
+//                 first_stat.wins
+//             );
+//         }
+//     }
+
+//     format!("{}", output.trim_end_matches(" | "))
+// }
 
 pub async fn first_results(
     target: &str,
