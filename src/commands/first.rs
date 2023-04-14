@@ -173,7 +173,19 @@ pub async fn first(
         return format!("STATUS closed (opens at 06H00 {})", tz.to_string());
     }
 
-    if let Err(_) = db.lock().await.update(
+    match db.lock().await.select("first_results", |fr: &FirstResult| {
+        fr.nick.to_lowercase() == nick.to_lowercase()
+            && fr.target.to_lowercase() == target.to_lowercase()
+            && fr.datetime.date_naive() == Utc::now().date_naive()
+    }) {
+        Ok(result) => match result {
+            Some(_) => return String::from("You have already played the game today."),
+            None => (),
+        },
+        Err(_) => return String::from("Could not check your time."),
+    }
+
+    if let Err(_) = db.lock().await.insert(
         "first_results",
         FirstResult {
             nick: String::from(nick),
@@ -181,12 +193,8 @@ pub async fn first(
             datetime: Utc::now(),
             tz,
         },
-        |fr: &&FirstResult| {
-            fr.nick.to_lowercase() == nick.to_lowercase()
-                && fr.target.to_lowercase() == target.to_lowercase()
-        },
     ) {
-        return String::from("Problem registering your time.");
+        return String::from("Could not register your time.");
     }
 
     let mut first_results: Vec<FirstResult> =
@@ -203,7 +211,7 @@ pub async fn first(
 
     show_results(&mut first_results, Some(nick), target, client).await;
 
-    String::from("Check the full results with !first_results.")
+    String::new()
 }
 
 pub async fn first_stats(db: Arc<Mutex<Database>>) -> String {
