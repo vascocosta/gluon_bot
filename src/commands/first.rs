@@ -285,38 +285,6 @@ pub async fn first_stats(target: &str, db: Arc<Mutex<Database>>) -> String {
     format!("{}", output.trim_end_matches(" | "))
 }
 
-// pub async fn first_stats(db: Arc<Mutex<Database>>) -> String {
-//     let mut first_stats: Vec<FirstStat> = match db.lock().await.select("first_stats", |_| true) {
-//         Ok(first_stats) => match first_stats {
-//             Some(first_stats) => first_stats,
-//             None => return String::from("Could not find any stats."),
-//         },
-//         Err(_) => return String::from("Could not find any stats."),
-//     };
-
-//     first_stats.sort_by(|a, b| b.points.cmp(&a.points));
-
-//     let mut output: String = Default::default();
-
-//     for (position, first_stat) in first_stats.into_iter().enumerate() {
-//         if first_stat.points > 0 {
-//             let re = Regex::new(r"[^A-Za-z0-9]+").unwrap();
-//             let nick = re.replace_all(&first_stat.nick, "").to_uppercase();
-
-//             output = format!(
-//                 "{}{}. {} {} ({} wins) | ",
-//                 output,
-//                 position + 1,
-//                 &nick[..3],
-//                 first_stat.points,
-//                 first_stat.wins
-//             );
-//         }
-//     }
-
-//     format!("{}", output.trim_end_matches(" | "))
-// }
-
 pub async fn first_results(
     target: &str,
     db: Arc<Mutex<Database>>,
