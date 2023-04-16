@@ -11,24 +11,7 @@ struct FirstStat {
     nick: String,
     points: u32,
     wins: u32,
-}
-
-impl CsvRecord for FirstStat {
-    fn from_fields(fields: &[String]) -> Self {
-        Self {
-            nick: fields[0].clone(),
-            points: fields[1].parse().unwrap(),
-            wins: fields[2].parse().unwrap(),
-        }
-    }
-
-    fn to_fields(&self) -> Vec<String> {
-        vec![
-            self.nick.clone(),
-            self.points.to_string(),
-            self.wins.to_string(),
-        ]
-    }
+    tz: String,
 }
 
 #[derive(Debug, PartialEq)]
@@ -250,6 +233,7 @@ pub async fn first_stats(target: &str, db: Arc<Mutex<Database>>) -> String {
                 nick: String::from(result.nick.clone()),
                 points: 0,
                 wins: 0,
+                tz: result.tz.to_string(),
             });
 
             reference.points += points[position];
@@ -268,16 +252,25 @@ pub async fn first_stats(target: &str, db: Arc<Mutex<Database>>) -> String {
 
     for (position, stat) in stats.into_iter().enumerate() {
         if stat.points > 0 {
-            let re = Regex::new(r"[^A-Za-z0-9]+").unwrap();
-            let nick = re.replace_all(&stat.nick, "").to_uppercase();
+            let re = match Regex::new(r"[^A-Za-z0-9]+") {
+                Ok(re) => re,
+                Err(_) => return String::from("Could not get results."),
+            };
+            let nick: String = re
+                .replace(&stat.nick, "")
+                .to_uppercase()
+                .chars()
+                .take(3)
+                .collect();
 
             output = format!(
-                "{}{}. {} {} ({} wins) | ",
+                "{}{}. {} {} ({} wins) ({}) | ",
                 output,
                 position + 1,
-                &nick[..3],
+                nick,
                 stat.points,
-                stat.wins
+                stat.wins,
+                stat.tz
             );
         }
     }
