@@ -98,9 +98,10 @@ pub async fn next(args: &[String], nick: &str, target: &str, db: Arc<Mutex<Datab
             Ok(tz) => tz,
             Err(_) => Tz::CET,
         };
-        let duration = events[0].datetime.signed_duration_since(Utc::now());
 
         events.sort_by(|a, b| a.datetime.cmp(&b.datetime));
+
+        let duration = events[0].datetime.signed_duration_since(Utc::now());
 
         format!(
             "{} | {} {} {} | {} day(s), {} hour(s), {} minute(s)",
