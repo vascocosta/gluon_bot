@@ -76,7 +76,7 @@ async fn show_results(
             .cmp(&b.datetime.with_timezone(&b.tz).to_string())
     });
 
-    for (position, result) in first_results.into_iter().take(6).enumerate() {
+    for (position, result) in first_results.into_iter().take(10).enumerate() {
         let re = match Regex::new(r"[^A-Za-z0-9]+") {
             Ok(re) => re,
             Err(_) => {
