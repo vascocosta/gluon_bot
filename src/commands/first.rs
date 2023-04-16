@@ -1,5 +1,5 @@
 use crate::database::{CsvRecord, Database};
-use chrono::{DateTime, Timelike, Utc};
+use chrono::{DateTime, Datelike, Days, Timelike, Utc, Weekday};
 use chrono_tz::Tz;
 use irc::{client::Client, proto::Command};
 use regex::Regex;
@@ -198,9 +198,25 @@ pub async fn first(
 }
 
 pub async fn first_stats(target: &str, db: Arc<Mutex<Database>>) -> String {
+    let now = Utc::now();
+    let week_day = now.weekday();
+    let day_number = match week_day {
+        Weekday::Mon => 1,
+        Weekday::Tue => 2,
+        Weekday::Wed => 3,
+        Weekday::Thu => 4,
+        Weekday::Fri => 5,
+        Weekday::Sat => 6,
+        Weekday::Sun => 7,
+    };
+    let start_date = match now.date_naive().checked_sub_days(Days::new(day_number)) {
+        Some(start_date) => start_date,
+        None => return String::from("Could not get stats."),
+    };
     let first_results: Vec<FirstResult> =
         match db.lock().await.select("first_results", |fr: &FirstResult| {
             fr.target.to_lowercase() == target.to_lowercase()
+                && fr.datetime.date_naive() > start_date
         }) {
             Ok(first_results) => match first_results {
                 Some(first_results) => first_results,
@@ -208,7 +224,6 @@ pub async fn first_stats(target: &str, db: Arc<Mutex<Database>>) -> String {
             },
             Err(_) => return String::from("Could not get results."),
         };
-
     let mut days: HashMap<String, Vec<FirstResult>> = HashMap::new();
     let mut stats: HashMap<String, FirstStat> = HashMap::new();
 
