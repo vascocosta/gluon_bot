@@ -151,9 +151,12 @@ pub async fn first(
             return String::from("Your time zone is invalid. Example: !timezone Europe/Berlin")
         }
     };
+    let now_with_timezone = Utc::now().with_timezone(&tz);
 
-    if Utc::now().with_timezone(&tz).hour() < 6 {
-        return format!("STATUS closed (opens at 06H00 {})", tz.to_string());
+    if now_with_timezone.hour() < 5
+        || (now_with_timezone.hour() == 5 && now_with_timezone.minute() < 30)
+    {
+        return format!("STATUS closed (opens at 05H30 {})", tz.to_string());
     }
 
     match db.lock().await.select("first_results", |fr: &FirstResult| {
