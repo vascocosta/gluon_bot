@@ -51,7 +51,9 @@ impl<'a> BotCommand<'a> {
             "city" => city::city(&self.args, db).await,
             "date" | "time" => base::date_time().await,
             "f1results" => f1results::f1results(&self.args).await,
-            "first" | "1st" => first::first(&self.nick, &self.target, db, client).await,
+            "first" | "1st" => {
+                first::first(&self.nick, &self.target, self.options, db, client).await
+            }
             "first_results" => first::first_results(&self.target, db, client).await,
             "first_stats" | "first_points" => first::first_stats(&self.target, db).await,
             "hello" => base::hello(&self.nick).await,

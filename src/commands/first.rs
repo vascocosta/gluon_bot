@@ -129,11 +129,39 @@ async fn show_results(
 pub async fn first(
     nick: &str,
     target: &str,
+    options: &HashMap<String, String>,
     db: Arc<Mutex<Database>>,
     client: Arc<Mutex<Client>>,
 ) -> String {
-    if Utc::now().hour() > 20 {
-        return String::from("STATUS: closed (closes at 21H00 UTC)");
+    let utc_now = Utc::now();
+    let close_hour = match options.get("first_close_hour") {
+        Some(close_hour) => match close_hour.parse() {
+            Ok(close_hour) => match close_hour {
+                0..=23 => close_hour,
+                _ => 21,
+            },
+            Err(_) => 21,
+        },
+        None => 21,
+    };
+    let close_min = match options.get("first_close_min") {
+        Some(close_min) => match close_min.parse() {
+            Ok(close_min) => match close_min {
+                0..=59 => close_min,
+                _ => 0,
+            },
+            Err(_) => 0,
+        },
+        None => 0,
+    };
+
+    if utc_now.hour() > close_hour
+        || (utc_now.hour() == close_hour && utc_now.minute() >= close_min)
+    {
+        return format!(
+            "STATUS: closed (closes at {:0>2}H{:0>2} UTC)",
+            close_hour, close_min,
+        );
     }
 
     let time_zones: Vec<TimeZone> = match db.lock().await.select("time_zones", |tz: &TimeZone| {
@@ -151,18 +179,41 @@ pub async fn first(
             return String::from("Your time zone is invalid. Example: !timezone Europe/Berlin")
         }
     };
-    let now_with_timezone = Utc::now().with_timezone(&tz);
+    let tz_now = utc_now.with_timezone(&tz);
+    let open_hour = match options.get("first_open_hour") {
+        Some(open_hour) => match open_hour.parse() {
+            Ok(open_hour) => match open_hour {
+                0..=23 => open_hour,
+                _ => 5,
+            },
+            Err(_) => 5,
+        },
+        None => 5,
+    };
+    let open_min = match options.get("first_open_min") {
+        Some(open_min) => match open_min.parse() {
+            Ok(open_min) => match open_min {
+                0..=59 => open_min,
+                _ => 30,
+            },
+            Err(_) => 30,
+        },
+        None => 30,
+    };
 
-    if now_with_timezone.hour() < 5
-        || (now_with_timezone.hour() == 5 && now_with_timezone.minute() < 30)
-    {
-        return format!("STATUS closed (opens at 05H30 {})", tz.to_string());
+    if tz_now.hour() < open_hour || (tz_now.hour() == open_hour && tz_now.minute() < open_min) {
+        return format!(
+            "STATUS closed (opens at {:0>2}H{:0>2} {})",
+            open_hour,
+            open_min,
+            tz.to_string()
+        );
     }
 
     match db.lock().await.select("first_results", |fr: &FirstResult| {
         fr.nick.to_lowercase() == nick.to_lowercase()
             && fr.target.to_lowercase() == target.to_lowercase()
-            && fr.datetime.date_naive() == Utc::now().date_naive()
+            && fr.datetime.date_naive() == utc_now.date_naive()
     }) {
         Ok(result) => match result {
             Some(_) => return String::from("You have already played the game today."),
@@ -176,7 +227,7 @@ pub async fn first(
         FirstResult {
             nick: String::from(nick),
             target: String::from(target),
-            datetime: Utc::now(),
+            datetime: utc_now,
             tz,
         },
     ) {
@@ -185,7 +236,7 @@ pub async fn first(
 
     let mut first_results: Vec<FirstResult> =
         match db.lock().await.select("first_results", |fr: &FirstResult| {
-            Utc::now().date_naive() == fr.datetime.date_naive()
+            utc_now.date_naive() == fr.datetime.date_naive()
                 && fr.target.to_lowercase() == target.to_lowercase()
         }) {
             Ok(first_results) => match first_results {
@@ -315,9 +366,5 @@ pub async fn first_results(
 
     show_results(&mut first_results, None, target, client).await;
 
-    if Utc::now().hour() < 21 {
-        String::from("STATUS: open (closes at 21H00 UTC)")
-    } else {
-        String::from("STATUS: closed (closes at 21H00 UTC)")
-    }
+    String::new()
 }
