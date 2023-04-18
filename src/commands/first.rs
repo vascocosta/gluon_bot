@@ -120,6 +120,8 @@ async fn show_results(
                     )) {
                         eprintln!("{error}");
                     }
+
+                    break;
                 }
             }
         }
