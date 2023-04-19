@@ -200,6 +200,10 @@ pub async fn hello(nick: &str) -> String {
     format!("Hello {}", nick)
 }
 
+pub async fn help() -> String {
+    String::from("Command list: alarm | ask | city | date | f1results | first | first_results | first_stats | hello | help | imdb | next | notify | ping | quote | rates | remind | timezone | weather")
+}
+
 pub async fn ping() -> String {
     String::from("pong")
 }
