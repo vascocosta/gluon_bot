@@ -50,7 +50,7 @@ impl<'a> BotCommand<'a> {
             "ask" => base::ask(&self.args, db).await,
             "city" => city::city(&self.args, db).await,
             "date" | "time" => base::date_time().await,
-            "f1results" => f1results::f1results(&self.args).await,
+            "f1results" => f1results::f1results().await,
             "first" | "1st" => {
                 first::first(&self.nick, &self.target, self.options, db, client).await
             }
