@@ -6,7 +6,14 @@ use tokio::time::Duration;
 
 pub async fn find_title(url: &str) -> Result<Option<String>, Box<dyn Error>> {
     let client = Client::builder().timeout(Duration::from_secs(10)).build()?;
-    let res = client.get(url).header(USER_AGENT, "curl").send().await?;
+    let res = client
+        .get(url)
+        .header(
+            USER_AGENT,
+            "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0",
+        )
+        .send()
+        .await?;
     let body = res.text().await?;
     let document = Html::parse_document(&body);
     let selector = Selector::parse("title")?;
