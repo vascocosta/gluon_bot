@@ -51,7 +51,7 @@ impl CsvRecord for City {
 }
 
 pub async fn city(args: &[String], db: Arc<Mutex<Database>>) -> String {
-    if args.len() < 1 {
+    if args.is_empty() {
         return String::from("Please provide a city");
     }
 
@@ -65,7 +65,7 @@ pub async fn city(args: &[String], db: Arc<Mutex<Database>>) -> String {
         Err(_) => return String::from("Could not find city."),
     };
 
-    if cities.len() > 0 {
+    if !cities.is_empty() {
         let n = std::cmp::min(cities.len(), 5);
 
         let output: String = cities
@@ -79,8 +79,8 @@ pub async fn city(args: &[String], db: Arc<Mutex<Database>>) -> String {
             })
             .collect();
 
-        return output;
+        output
     } else {
-        return String::from("Could not find city.");
+        String::from("Could not find city.")
     }
 }

@@ -32,10 +32,7 @@ impl CsvRecord for Event {
             },
             channel: fields[4].clone(),
             tags: fields[5].clone(),
-            announced: match fields[6].parse() {
-                Ok(announced) => announced,
-                Err(_) => false,
-            },
+            announced: fields[6].parse().unwrap_or(false),
         }
     }
 
@@ -102,7 +99,7 @@ pub async fn next(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>) {
         for event in events {
             let hash = calculate_hash(&event);
 
-            if let None = hashes.iter().find(|h| h == &&hash) {
+            if !hashes.iter().any(|h| h == &hash) {
                 if let Err(error) = client.lock().await.send(Command::PRIVMSG(
                     event.channel.clone(),
                     format!(

@@ -60,45 +60,37 @@ async fn main() -> Result<(), Box<dyn Error>> {
     while let Some(message) = stream.next().await.transpose()? {
         let sender = client.lock().await.sender();
         let nick = match message.prefix {
-            Some(prefix) => match prefix {
-                Prefix::Nickname(nick, _, _) => Some(nick),
-                _ => None,
-            },
+            Some(Prefix::Nickname(nick, _, _)) => Some(nick),
+            Some(Prefix::ServerName(_)) => None,
             None => None,
         };
 
-        match message.command {
-            Command::PRIVMSG(target, message) => {
-                if message.len() > 1 && message.starts_with(prefix) {
-                    let options = Arc::clone(&options);
-                    let db = Arc::clone(&db);
-                    let client = Arc::clone(&client);
+        if let Command::PRIVMSG(target, message) = message.command {
+            if message.len() > 1 && message.starts_with(prefix) {
+                let options = Arc::clone(&options);
+                let db = Arc::clone(&db);
+                let client = Arc::clone(&client);
 
-                    task::spawn(async move {
-                        if let Ok(bot_command) = BotCommand::new(&message, nick, &target, &options)
-                        {
-                            let output = bot_command.handle(db, client).await;
+                task::spawn(async move {
+                    if let Ok(bot_command) = BotCommand::new(&message, nick, &target, &options) {
+                        let output = bot_command.handle(db, client).await;
 
-                            if let Err(error) = sender.send_privmsg(&target, output) {
-                                eprintln!("{error}");
+                        if let Err(error) = sender.send_privmsg(&target, output) {
+                            eprintln!("{error}");
+                        }
+                    }
+                });
+            } else {
+                task::spawn(async move {
+                    if let Some(url) = utils::find_url(&message) {
+                        if let Ok(Some(title)) = utils::find_title(url).await {
+                            if let Err(error) = sender.send_privmsg(&target, title) {
+                                eprint!("{error}");
                             }
                         }
-                    });
-                } else {
-                    task::spawn(async move {
-                        if let Some(url) = utils::find_url(&message) {
-                            if let Ok(title) = utils::find_title(url).await {
-                                if let Some(title) = title {
-                                    if let Err(error) = sender.send_privmsg(&target, title) {
-                                        eprint!("{error}");
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }
+                    }
+                });
             }
-            _ => (),
         }
     }
 

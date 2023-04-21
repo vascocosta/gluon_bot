@@ -20,7 +20,7 @@ pub async fn find_title(url: &str) -> Result<Option<String>, Box<dyn Error>> {
 
     match document.select(&selector).next() {
         Some(title) => Ok(Some(title.text().collect())),
-        None => return Ok(None),
+        None => Ok(None),
     }
 }
 

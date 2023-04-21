@@ -91,7 +91,7 @@ pub async fn alarm(
     db: Arc<Mutex<Database>>,
     client: Arc<Mutex<Client>>,
 ) -> String {
-    if args.len() < 1 {
+    if args.is_empty() {
         return String::from("Please provide a time in your time zone.");
     }
 
@@ -131,7 +131,7 @@ pub async fn alarm(
 
     if let Err(error) = client.lock().await.send(Command::PRIVMSG(
         String::from(target),
-        format!("Alarm set to {} {}.", args[0], tz.to_string()),
+        format!("Alarm set to {} {}.", args[0], tz),
     )) {
         eprintln!("{error}");
     }
@@ -174,7 +174,7 @@ pub async fn alarm(
 }
 
 pub async fn ask(args: &[String], db: Arc<Mutex<Database>>) -> String {
-    if args.len() < 1 {
+    if args.is_empty() {
         return String::from("Please provide a question.");
     }
 
@@ -213,7 +213,7 @@ pub async fn ping() -> String {
 }
 
 pub async fn quote(args: &[String], target: &str, db: Arc<Mutex<Database>>) -> String {
-    if args.len() == 0 {
+    if args.is_empty() {
         let quotes: Vec<Quote> = match db
             .lock()
             .await
@@ -226,14 +226,14 @@ pub async fn quote(args: &[String], target: &str, db: Arc<Mutex<Database>>) -> S
             Err(_) => return String::from("Could not find quotes."),
         };
 
-        if quotes.len() == 0 {
+        if quotes.is_empty() {
             return String::from("Could not find quotes.");
         }
 
         let mut rng = StdRng::from_entropy();
         let index = rng.gen_range(0..quotes.len());
 
-        return format!("{} {}", quotes[index].date, quotes[index].text);
+        format!("{} {}", quotes[index].date, quotes[index].text)
     } else {
         match db.lock().await.insert(
             "quotes",
@@ -243,8 +243,8 @@ pub async fn quote(args: &[String], target: &str, db: Arc<Mutex<Database>>) -> S
                 channel: String::from(target),
             },
         ) {
-            Ok(_) => return String::from("Quote added successfully."),
-            Err(_) => return String::from("Problem adding quote."),
+            Ok(_) => String::from("Quote added successfully."),
+            Err(_) => String::from("Problem adding quote."),
         }
     }
 }
@@ -255,7 +255,7 @@ pub async fn reminder(
     target: &str,
     client: Arc<Mutex<Client>>,
 ) -> String {
-    if args.len() < 1 {
+    if args.is_empty() {
         return String::from("Please provide a duration in minutes.");
     }
 
@@ -301,8 +301,8 @@ pub async fn time_zone(args: &[String], nick: &str, db: Arc<Mutex<Database>>) ->
         Err(_) => Tz::CET,
     };
 
-    if args.len() == 0 {
-        format!("Your current time zone: {}", tz.to_string())
+    if args.is_empty() {
+        format!("Your current time zone: {}", tz)
     } else {
         match db.lock().await.update(
             "time_zones",
@@ -339,7 +339,7 @@ pub async fn weather(
                 Err(_) => return String::from("Please provide a location."),
             };
 
-            if weather_settings.len() > 0 {
+            if !weather_settings.is_empty() {
                 weather_settings[0].location.clone()
             } else {
                 return String::from("Please provide a location.");
@@ -351,12 +351,13 @@ pub async fn weather(
                 location: args.join(" "),
             };
 
-            if let Err(_) =
-                db.lock()
-                    .await
-                    .update("weather_settings", entity, |ws: &&WeatherSetting| {
-                        ws.nick.to_lowercase() == nick.to_lowercase()
-                    })
+            if db
+                .lock()
+                .await
+                .update("weather_settings", entity, |ws: &&WeatherSetting| {
+                    ws.nick.to_lowercase() == nick.to_lowercase()
+                })
+                .is_err()
             {
                 eprintln!("Problem storing location.")
             }

@@ -72,7 +72,7 @@ pub struct Rating {
 }
 
 pub async fn omdb(args: &[String], options: &HashMap<String, String>) -> String {
-    if args.len() < 1 {
+    if args.is_empty() {
         return String::from("Please provide a movie or series title.");
     }
 

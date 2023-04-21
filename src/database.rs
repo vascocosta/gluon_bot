@@ -108,7 +108,7 @@ impl Database {
         let mut keep: Vec<&T> = Vec::new();
 
         for entity in &entities {
-            if !delete.contains(&&entity) {
+            if !delete.contains(&entity) {
                 keep.push(entity)
             }
         }
@@ -131,7 +131,7 @@ impl Database {
         let mut keep: Vec<&T> = Vec::new();
 
         for entity in &entities {
-            if !delete.contains(&&entity) {
+            if !delete.contains(&entity) {
                 keep.push(entity)
             }
         }

@@ -37,7 +37,7 @@ pub async fn external_message(client: Arc<Mutex<Client>>) {
                     continue;
                 }
                 Ok(_) => {
-                    if line.len() > 2 && line.starts_with("#") {
+                    if line.len() > 2 && line.starts_with('#') {
                         let split_line: Vec<&str> = line.split_ascii_whitespace().collect();
 
                         if split_line.len() > 1 {

@@ -76,7 +76,7 @@ async fn show_results(
             .cmp(&b.datetime.with_timezone(&b.tz).to_string())
     });
 
-    for (position, result) in first_results.into_iter().take(10).enumerate() {
+    for (position, result) in first_results.iter().take(10).enumerate() {
         let re = match Regex::new(r"[^A-Za-z0-9]+") {
             Ok(re) => re,
             Err(_) => {
@@ -101,12 +101,8 @@ async fn show_results(
                         "{}. {} | {} ({})",
                         position + 1,
                         &nick[..3],
-                        result.datetime.with_timezone(&result.tz).time().to_string(),
-                        result
-                            .datetime
-                            .with_timezone(&result.tz)
-                            .timezone()
-                            .to_string(),
+                        result.datetime.with_timezone(&result.tz).time(),
+                        result.datetime.with_timezone(&result.tz).timezone()
                     ),
                 )) {
                     eprintln!("{error}");
@@ -206,9 +202,7 @@ pub async fn first(
     if tz_now.hour() < open_hour || (tz_now.hour() == open_hour && tz_now.minute() < open_min) {
         return format!(
             "STATUS closed (opens at {:0>2}H{:0>2} {})",
-            open_hour,
-            open_min,
-            tz.to_string()
+            open_hour, open_min, tz
         );
     }
 
@@ -217,22 +211,28 @@ pub async fn first(
             && fr.target.to_lowercase() == target.to_lowercase()
             && fr.datetime.date_naive() == utc_now.date_naive()
     }) {
-        Ok(result) => match result {
-            Some(_) => return String::from("You have already played the game today."),
-            None => (),
-        },
+        Ok(result) => {
+            if result.is_some() {
+                return String::from("You have already played the game today.");
+            }
+        }
         Err(_) => return String::from("Could not check your time."),
     }
 
-    if let Err(_) = db.lock().await.insert(
-        "first_results",
-        FirstResult {
-            nick: String::from(nick),
-            target: String::from(target),
-            datetime: utc_now,
-            tz,
-        },
-    ) {
+    if db
+        .lock()
+        .await
+        .insert(
+            "first_results",
+            FirstResult {
+                nick: String::from(nick),
+                target: String::from(target),
+                datetime: utc_now,
+                tz,
+            },
+        )
+        .is_err()
+    {
         return String::from("Could not register your time.");
     }
 
@@ -301,7 +301,7 @@ pub async fn first_stats(target: &str, db: Arc<Mutex<Database>>) -> String {
 
         for (position, result) in first_results.into_iter().enumerate().take(10) {
             let reference = stats.entry(result.nick.clone()).or_insert(FirstStat {
-                nick: String::from(result.nick.clone()),
+                nick: result.nick.clone(),
                 points: 0,
                 wins: 0,
                 tz: result.tz.to_string(),
@@ -346,7 +346,7 @@ pub async fn first_stats(target: &str, db: Arc<Mutex<Database>>) -> String {
         }
     }
 
-    format!("{}", output.trim_end_matches(" | "))
+    output.trim_end_matches(" | ").to_string()
 }
 
 pub async fn first_results(

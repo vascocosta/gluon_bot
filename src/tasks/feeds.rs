@@ -50,10 +50,7 @@ pub async fn feeds(
 ) {
     loop {
         sleep(Duration::from_secs(match options.get("feed_refresh") {
-            Some(feed_refresh) => match feed_refresh.parse() {
-                Ok(feed_refresh) => feed_refresh,
-                Err(_) => 300,
-            },
+            Some(feed_refresh) => feed_refresh.parse().unwrap_or(300),
             None => 300,
         }))
         .await;
@@ -118,17 +115,22 @@ pub async fn feeds(
                             eprintln!("{error}");
                         }
 
-                        if let Err(_) = db_clone.lock().await.update(
-                            "feeds",
-                            Feed {
-                                id: id,
-                                category: category.clone(),
-                                url: url.clone(),
-                                channel: channel.clone(),
-                                published: entry_published,
-                            },
-                            |f: &&Feed| f.id == id,
-                        ) {
+                        if db_clone
+                            .lock()
+                            .await
+                            .update(
+                                "feeds",
+                                Feed {
+                                    id,
+                                    category: category.clone(),
+                                    url: url.clone(),
+                                    channel: channel.clone(),
+                                    published: entry_published,
+                                },
+                                |f: &&Feed| f.id == id,
+                            )
+                            .is_err()
+                        {
                             println!("Problem updating published time.");
                         }
 

@@ -30,7 +30,7 @@ pub async fn f1results() -> String {
         Ok(title) => match title {
             Some(title) => title
                 .trim()
-                .replace("\n", "")
+                .replace('\n', "")
                 .split_whitespace()
                 .collect::<Vec<&str>>()
                 .join(" "),
@@ -69,8 +69,7 @@ pub async fn f1results() -> String {
                     .text()
                     .collect::<String>()
                     .trim()
-                    .replace("\n", "")
-                    .replace("\r", "")
+                    .replace(['\n', '\r'], "")
                     .split_whitespace()
                     .collect();
                 output = format!("{}{} ", output, &cell[cell.len() - 3..]);
@@ -86,7 +85,7 @@ pub async fn f1results() -> String {
         if index > 0 && index < 20 {
             output = format!("{}| ", output);
         } else {
-            output = format!("{}", output);
+            output = output.to_string();
         }
     }
 

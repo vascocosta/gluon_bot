@@ -31,10 +31,7 @@ impl<'a> BotCommand<'a> {
 
         Ok(Self {
             name: split_message[0][1..].to_string(),
-            args: split_message[1..]
-                .into_iter()
-                .map(|a| a.to_string())
-                .collect(),
+            args: split_message[1..].iter().map(|a| a.to_string()).collect(),
             nick: match nick {
                 Some(nick) => nick,
                 None => return Err("Could not parse nick"),
