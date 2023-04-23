@@ -4,6 +4,7 @@ mod f1results;
 mod first;
 mod next;
 mod omdb;
+mod plugin;
 mod rates;
 
 use crate::database::Database;
@@ -66,7 +67,7 @@ impl<'a> BotCommand<'a> {
             }
             "timezone" | "tz" => base::time_zone(&self.args, &self.nick, db).await,
             "weather" | "w" => base::weather(&self.args, &self.nick, self.options, db).await,
-            _ => "".to_string(),
+            _ => plugin::plugin(&self.name, &self.args, &self.nick, self.options).await,
         }
     }
 }
