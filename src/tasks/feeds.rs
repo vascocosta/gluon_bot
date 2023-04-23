@@ -94,7 +94,10 @@ pub async fn feeds(
                 for entry in entries {
                     let entry_published = match entry.published {
                         Some(entry_published) => entry_published,
-                        None => return,
+                        None => match entry.updated {
+                            Some(entry_updated) => entry_updated,
+                            None => return,
+                        },
                     };
 
                     if entry_published > last_modified {
