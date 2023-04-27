@@ -36,15 +36,15 @@ async fn main() {
             Err(error) => match error {
                 irc::error::Error::InvalidConfig { path, cause } => {
                     eprintln!("Invalid configuration file ({path}). Cause: {cause}.");
-    
+
                     return;
                 }
                 _ => {
                     eprintln!("Unknown error parsing configuration file.");
 
                     return;
-                },
-            }
+                }
+            },
         },
     ));
     let options = Arc::new(config.options);

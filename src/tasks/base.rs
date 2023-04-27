@@ -1,10 +1,14 @@
 use irc::client::prelude::Command;
 use irc::client::Client;
+use std::io::ErrorKind;
 use std::sync::Arc;
 use tokio::io::AsyncBufReadExt;
 use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
-use tokio::{fs::OpenOptions, io::BufReader};
+use tokio::{
+    fs::{File, OpenOptions},
+    io::BufReader,
+};
 
 pub async fn external_message(client: Arc<Mutex<Client>>) {
     loop {
@@ -16,13 +20,21 @@ pub async fn external_message(client: Arc<Mutex<Client>>) {
             .await
         {
             Ok(file) => file,
-            Err(error) => {
-                sleep(Duration::from_secs(1)).await;
+            Err(error) => match error.kind() {
+                ErrorKind::NotFound => match File::create("out.txt").await {
+                    Ok(file) => file,
+                    Err(_) => {
+                        eprintln!("Could not create out.txt.");
 
-                eprintln!("{error}");
+                        return;
+                    }
+                },
+                _ => {
+                    eprintln!("Could not create out.txt.");
 
-                return;
-            }
+                    return;
+                }
+            },
         };
 
         let mut reader = BufReader::new(file);
