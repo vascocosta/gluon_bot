@@ -23,11 +23,6 @@ async fn main() {
 
                 return;
             }
-            irc::error::Error::InvalidConfig { path, cause } => {
-                eprintln!("Invalid configuration file ({path}). Cause: {cause}.");
-
-                return;
-            }
             _ => {
                 eprintln!("Unknown error parsing configuration file.");
 
@@ -38,10 +33,17 @@ async fn main() {
     let client = Arc::new(Mutex::new(
         match Client::from_config(config.clone()).await {
             Ok(client) => client,
-            Err(error) => {
-                eprintln!("{error}");
+            Err(error) => match error {
+                irc::error::Error::InvalidConfig { path, cause } => {
+                    eprintln!("Invalid configuration file ({path}). Cause: {cause}.");
+    
+                    return;
+                }
+                _ => {
+                    eprintln!("Unknown error parsing configuration file.");
 
-                return;
+                    return;
+                },
             }
         },
     ));
