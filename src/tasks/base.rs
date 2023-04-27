@@ -22,7 +22,7 @@ pub async fn external_message(client: Arc<Mutex<Client>>) {
             Ok(file) => file,
             Err(error) => match error.kind() {
                 ErrorKind::NotFound => match File::create("out.txt").await {
-                    Ok(file) => file,
+                    Ok(_) => continue,
                     Err(_) => {
                         eprintln!("Could not create out.txt.");
 
