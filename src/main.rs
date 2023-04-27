@@ -7,17 +7,30 @@ use commands::BotCommand;
 use database::Database;
 use futures::prelude::*;
 use irc::client::prelude::*;
-use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::task;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() {
     // Variables that run exclusively on the main task/thread are declared like regular variables.
     // Variables whose immutable/mutable reference is shared among tasks/threads use an Arc/Mutex.
-    let config = Config::load("config.toml")?;
-    let client = Arc::new(Mutex::new(Client::from_config(config.clone()).await?));
+    let config = match Config::load("config.toml") {
+        Ok(config) => config,
+        Err(error) => {
+            eprintln!("{error}");
+
+            return;
+        }
+    };
+    let client = Arc::new(Mutex::new(match Client::from_config(config.clone()).await {
+        Ok(client) => client,
+        Err(error) => {
+            eprintln!("{error}");
+
+            return;
+        },
+    }));
     let options = Arc::new(config.options);
     let prefix = match options.get("prefix") {
         Some(prefix) => prefix,
@@ -30,9 +43,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
         },
         None,
     )));
-    let mut stream = client.lock().await.stream()?;
+    let mut stream = match client.lock().await.stream() {
+        Ok(stream) => stream,
+        Err(error) => {
+            eprintln!("{error}");
 
-    client.lock().await.identify()?;
+            return;
+        }
+    };
+
+    if let Err(error) = client.lock().await.identify() {
+        eprintln!("{error}");
+    }
 
     let client_clone = Arc::clone(&client);
     let db_clone = Arc::clone(&db);
@@ -57,7 +79,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Main loop that continously gets IRC messages from an asynchronous stream.
     // Match any PRIVMSG received from the asynchronous stream of messages.
     // If the message is a bot command, spawn a Tokio task to handle the command.
-    while let Some(message) = stream.next().await.transpose()? {
+    while let Ok(Some(message)) = stream.next().await.transpose() {
         let sender = client.lock().await.sender();
         let nick = match message.prefix {
             Some(Prefix::Nickname(nick, _, _)) => Some(nick),
@@ -93,6 +115,4 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
         }
     }
-
-    Ok(())
 }
