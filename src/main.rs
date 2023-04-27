@@ -17,20 +17,34 @@ async fn main() {
     // Variables whose immutable/mutable reference is shared among tasks/threads use an Arc/Mutex.
     let config = match Config::load("config.toml") {
         Ok(config) => config,
-        Err(error) => {
-            eprintln!("{error}");
+        Err(error) => match error {
+            irc::error::Error::Io(_) => {
+                eprintln!("Could not read configuration file (config.toml).");
 
-            return;
-        }
-    };
-    let client = Arc::new(Mutex::new(match Client::from_config(config.clone()).await {
-        Ok(client) => client,
-        Err(error) => {
-            eprintln!("{error}");
+                return;
+            }
+            irc::error::Error::InvalidConfig { path, cause } => {
+                eprintln!("Invalid configuration file ({path}). Cause: {cause}.");
 
-            return;
+                return;
+            }
+            _ => {
+                eprintln!("Unknown error parsing configuration file.");
+
+                return;
+            }
         },
-    }));
+    };
+    let client = Arc::new(Mutex::new(
+        match Client::from_config(config.clone()).await {
+            Ok(client) => client,
+            Err(error) => {
+                eprintln!("{error}");
+
+                return;
+            }
+        },
+    ));
     let options = Arc::new(config.options);
     let prefix = match options.get("prefix") {
         Some(prefix) => prefix,
