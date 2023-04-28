@@ -1,6 +1,7 @@
 use std::cmp::PartialEq;
 use std::error::Error;
 use std::fmt;
+use std::fs::File;
 use std::io::ErrorKind;
 
 #[derive(Debug)]
@@ -142,9 +143,31 @@ impl Database {
     }
 
     pub fn write<T: CsvRecord>(&self, to: &str, entities: &Vec<&T>) -> Result<(), Box<dyn Error>> {
-        let mut wtr = csv::WriterBuilder::new()
+        let mut wtr = match csv::WriterBuilder::new()
             .has_headers(false)
-            .from_path(format!("{}{}.{}", self.path, to, self.extension))?;
+            .from_path(format!("{}{}.{}", self.path, to, self.extension))
+        {
+            Ok(wtr) => wtr,
+            Err(error) => match error.kind() {
+                csv::ErrorKind::Io(_) => {
+                    match File::create(format!("{}{}.{}", self.path, to, self.extension)) {
+                        Ok(_) => csv::WriterBuilder::new()
+                            .has_headers(false)
+                            .from_path(format!("{}{}.{}", self.path, to, self.extension))?,
+                        Err(_) => {
+                            eprintln!("Could not create database file.");
+
+                            return Err(Box::new(error));
+                        }
+                    }
+                }
+                _ => {
+                    eprintln!("Could not create database file.");
+
+                    return Err(Box::new(error));
+                }
+            },
+        };
 
         for entity in entities {
             let fields = entity.to_fields();
