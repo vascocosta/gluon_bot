@@ -220,7 +220,7 @@ pub async fn first(
             && fr.datetime.date_naive() == utc_now.date_naive()
     }) {
         Ok(result) => {
-            if result.is_some() {
+            if result.is_some() && !result.unwrap().is_empty() {
                 return String::from("You have already played the game today.");
             }
         }
