@@ -17,7 +17,7 @@ struct Event {
     datetime: DateTime<Utc>,
     channel: String,
     tags: String,
-    announced: bool,
+    notify: bool,
 }
 
 impl CsvRecord for Event {
@@ -32,7 +32,7 @@ impl CsvRecord for Event {
             },
             channel: fields[4].clone(),
             tags: fields[5].clone(),
-            announced: fields[6].parse().unwrap_or(false),
+            notify: fields[6].parse().unwrap_or(false),
         }
     }
 
@@ -44,7 +44,7 @@ impl CsvRecord for Event {
             self.datetime.to_string(),
             self.channel.clone(),
             self.tags.clone(),
-            self.announced.to_string(),
+            self.notify.to_string(),
         ]
     }
 }
@@ -110,20 +110,22 @@ pub async fn next(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>) {
                     eprintln!("{error}");
                 }
 
-                let notifications: Option<Vec<Notification>> =
-                    match db.lock().await.select("notifications", |n: &Notification| {
-                        n.channel.to_lowercase() == event.channel.clone()
-                    }) {
-                        Ok(notifications) => notifications,
-                        Err(_) => None,
-                    };
+                if event.notify {
+                    let notifications: Option<Vec<Notification>> =
+                        match db.lock().await.select("notifications", |n: &Notification| {
+                            n.channel.to_lowercase() == event.channel.clone()
+                        }) {
+                            Ok(notifications) => notifications,
+                            Err(_) => None,
+                        };
 
-                if let Some(notifications) = notifications {
-                    if let Err(error) = client.lock().await.send(Command::PRIVMSG(
-                        event.channel.clone(),
-                        notifications[0].mentions.clone(),
-                    )) {
-                        eprintln!("{error}");
+                    if let Some(notifications) = notifications {
+                        if let Err(error) = client.lock().await.send(Command::PRIVMSG(
+                            event.channel.clone(),
+                            notifications[0].mentions.clone(),
+                        )) {
+                            eprintln!("{error}");
+                        }
                     }
                 }
 
