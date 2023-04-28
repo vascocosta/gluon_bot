@@ -62,7 +62,7 @@ pub async fn f1results() -> String {
     };
     let mut output: String = String::new();
 
-    for (index, row) in document.select(&row_selector).enumerate() {
+    for (index, row) in document.select(&row_selector).take(11).enumerate() {
         for (index, cell) in row.select(&Selector::parse("td").unwrap()).enumerate() {
             if index == 3 {
                 let cell: String = cell
@@ -82,7 +82,7 @@ pub async fn f1results() -> String {
             }
         }
 
-        if index > 0 && index < 20 {
+        if index > 0 && index < 10 {
             output = format!("{}| ", output);
         } else {
             output = output.to_string();
