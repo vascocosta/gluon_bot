@@ -300,7 +300,7 @@ pub async fn time_zone(args: &[String], nick: &str, db: Arc<Mutex<Database>>) ->
         .get(0)
         .unwrap_or(&TimeZone {
             nick: String::from(nick),
-            name: String::from("Europe/Lisbon"),
+            name: String::from("Europe/Berlin"),
         })
         .name
         .parse()
