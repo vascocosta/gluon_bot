@@ -2,7 +2,27 @@
 
 General purpose IRC bot written in Rust.
 
-# Dependencies
+## Features
+
+* Concurrency
+* Multithreading
+* Memory safety
+* Performance
+* Reliability
+
+* Event search
+* Event announcements
+* Event notifications
+* Games
+* Plugins
+* Quotes
+* RSS/Atom feeds
+* Time zones
+* Weather
+
+## Build
+
+To build `gluon_bot` you need the `Rust toolchain` as well as these `dependencies`:
 
 * chrono = "0.4.23"
 * chrono-tz = "0.8.1"
@@ -20,7 +40,7 @@ General purpose IRC bot written in Rust.
 * serde_json = "1.0"
 * tokio = { version = "1.25.0", features = ["full"] }
 
-# Build
+Follow these steps to fetch and compile the source of `gluon_bot` and its `dependencies`:
 
 ```
 git clone https://github.com/vascocosta/gluon_bot.git
@@ -30,14 +50,16 @@ cd gluon_bot
 cargo build --release
 ```
 
-# Install
+## Install
 
 * Create a folder with the name of your bot
-* Move the gluon_bot binary generated above into that folder
-* Create a "data" subfolder
-* Create a "config.toml" configuration file
+* Move the `gluon_bot` binary generated above into that folder
+* Create a `data` subfolder
+* Create a `config.toml` configuration file like the one below
 
-# Configuration (sample config.toml)
+## Configuration (samples)
+
+### config.toml
 
 ```toml
 nickname = "Vettel"
@@ -66,4 +88,18 @@ owm_api_language = "en"
 owm_api_units = "metric"
 plugins_path = "plugins"
 prefix = "!"
+```
+
+### data/events.csv
+
+```csv
+[SpaceX],Falcon 9 Block 5,Starlink Group 3-5 Launch,2023-04-27 13:40:00 UTC,#geeks,space spacex,true
+[SpaceX],Falcon Heavy,ViaSat-3 Americas Launch,2023-04-27 23:29:00 UTC,#geeks,space spacex,true
+[SpaceX],Falcon 9 Block 5,O3b mPower 3 & 4 Launch,2023-04-28 21:12:00 UTC,#geeks,space spacex,true
+
+[Formula 1],Azerbaijan GP,Practice 1,2023-04-28 09:30:00 UTC,#formula1,f1 formula1,true
+[Formula 1],Azerbaijan GP,Qualifying,2023-04-28 13:00:00 UTC,#formula1,f1 formula1,true
+[Formula 1],Azerbaijan GP,Sprint Shootout,2023-04-29 08:30:00 UTC,#formula1,f1 formula1,true
+[Formula 1],Azerbaijan GP,Sprint,2023-04-29 13:30:00 UTC,#formula1,f1 formula1,true
+[Formula 1],Azerbaijan GP,Race,2023-04-30 11:00:00 UTC,#formula1,f1 formula1,true
 ```
