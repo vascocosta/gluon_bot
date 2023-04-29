@@ -4,21 +4,17 @@ General purpose IRC bot written in Rust.
 
 ## Features
 
-* Concurrency
-* Multithreading
+* Concurrency/Multithreading
 * Memory safety
 * Performance
 * Reliability
-
-* Event search
-* Event announcements
-* Event notifications
+* Events (search, announce and notify)
 * Games
-* Plugins
+* Plugins (language agnostic)
 * Quotes
 * RSS/Atom feeds
-* Time zones
-* Weather
+* Time zones (events on user's local time)
+* Weather (requires an OpenWeatherMap key)
 
 ## Build
 
