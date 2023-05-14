@@ -402,6 +402,10 @@ pub async fn weather(
             current.wind.deg,
             current.wind.gust.unwrap_or_default(),
         ),
-        Err(_) => String::from("Could not fetch weather."),
+        Err(err) => {
+            eprintln!("{err}");
+
+            String::from("Could not fetch weather.")
+        }
     }
 }
