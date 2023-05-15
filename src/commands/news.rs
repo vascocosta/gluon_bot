@@ -1,12 +1,27 @@
-use chrono::{Duration, Utc};
 use irc::client::prelude::Command;
 use irc::client::Client;
 use newsapi::api::NewsAPIClient;
-use newsapi::constants::{Language, SortMethod};
+use newsapi::constants::{Country, SortMethod};
 use newsapi::payload::article::Articles;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
+fn country(name: &str) -> Option<Country> {
+    match name.to_lowercase().as_str() {
+        "at" | "austria" => Some(Country::Austria),
+        "be" | "belgium" => Some(Country::Belgium),
+        "fr" | "france" => Some(Country::France),
+        "de" | "germany" => Some(Country::Germany),
+        "it" | "italy" => Some(Country::Italy),
+        "nl" | "netherlands" => Some(Country::Netherlands),
+        "pt" | "portugal" => Some(Country::Portugal),
+        "se" | "sweden" => Some(Country::Sweden),
+        "uk" | "united kingdom" => Some(Country::UnitedKingdomofGreatBritainandNorthernIreland),
+        "us" | "usa" | "unitted states" => Some(Country::UnitedStatesofAmerica),
+        _ => None,
+    }
+}
 
 pub async fn news(
     search: &[String],
@@ -23,13 +38,15 @@ pub async fn news(
         None => String::from(""),
     });
 
-    let start = Utc::now() - Duration::hours(72);
+    let country = match country(&search.join(" ")) {
+        Some(country) => country,
+        None => return String::from("Country not supported yet."),
+    };
 
-    news.from(&start)
-        .language(Language::English)
-        .query(&search.join(" "))
-        .sort_by(SortMethod::Popularity)
-        .everything();
+    news.country(country)
+        .category(newsapi::constants::Category::General)
+        .sort_by(SortMethod::PublishedAt)
+        .top_headlines();
 
     let articles = match news.send_async::<Articles>().await {
         Ok(articles) => articles,
@@ -44,7 +61,7 @@ pub async fn news(
         return String::from("Could not find any news.");
     }
 
-    for article in articles.articles.iter().take(3) {
+    for article in articles.articles.iter().take(4) {
         if client
             .lock()
             .await
