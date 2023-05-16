@@ -392,8 +392,9 @@ pub async fn weather(
     .await
     {
         Ok(current) => format!(
-            "{}: {} {:.1}C | Humidity: {}% | Pressure: {}hPa | Wind: {:.1}m/s @ {} {:.1}m/s",
+            "{}, {}: {} {:.1}C | Humidity: {}% | Pressure: {}hPa | Wind: {:.1}m/s @ {} {:.1}m/s",
             current.name,
+            current.sys.country,
             current.weather[0].description,
             current.main.temp,
             current.main.humidity,
