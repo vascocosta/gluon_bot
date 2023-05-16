@@ -1,3 +1,4 @@
+use chrono::{Duration, Utc};
 use irc::client::prelude::Command;
 use irc::client::Client;
 use newsapi::api::NewsAPIClient;
@@ -35,18 +36,23 @@ pub async fn news(
 
     let mut news = NewsAPIClient::new(match options.get("news_api_key") {
         Some(api_key) => String::from(api_key),
-        None => String::from(""),
+        None => return String::from("Could not find API key."),
     });
 
-    let country = match country(&search.join(" ")) {
-        Some(country) => country,
-        None => return String::from("Country not supported yet."),
-    };
+    if let Some(country) = country(&search.join(" ")) {
+        news.category(newsapi::constants::Category::General)
+            .country(country)
+            .sort_by(SortMethod::PublishedAt)
+            .top_headlines();
+    } else {
+        let start = Utc::now() - Duration::hours(72);
 
-    news.country(country)
-        .category(newsapi::constants::Category::General)
-        .sort_by(SortMethod::PublishedAt)
-        .top_headlines();
+        news.category(newsapi::constants::Category::General)
+            .from(&start)
+            .query(&search.join(" "))
+            .sort_by(SortMethod::PublishedAt)
+            .everything();
+    }
 
     let articles = match news.send_async::<Articles>().await {
         Ok(articles) => articles,

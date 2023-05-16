@@ -204,7 +204,7 @@ pub async fn help() -> String {
     String::from(
         "Command list: \
         alarm | ask | city | date | f1results | first | first_results | first_stats | hello | help | \
-        imdb | next | notify | ping | quote | rates | remind | timezone | weather",
+        imdb | news | next | notify | ping | quote | rates | remind | timezone | weather",
     )
 }
 
