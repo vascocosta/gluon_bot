@@ -396,7 +396,13 @@ pub async fn weather(
         .get_geocoding(&location, None, None, 1)
         .await
     {
-        Ok(geo) => geo,
+        Ok(geo) => {
+            if !geo.is_empty() {
+                geo
+            } else {
+                return String::from("Could not find location.");
+            }
+        }
         Err(err) => {
             eprintln!("{err}");
 
@@ -407,7 +413,8 @@ pub async fn weather(
     match openweather.one_call.call(geo[0].lat, geo[0].lon).await {
         Ok(weather) => match weather.current {
             Some(current) => format!(
-                "{} {:.1}C | Humidity: {}% | Pressure: {}hPa | Wind: {:.1}m/s @ {} {:.1}m/s",
+                "{}: {} {:.1}C | Humidity: {}% | Pressure: {}hPa | Wind: {:.1}m/s @ {} {:.1}m/s",
+                location,
                 current.weather[0].description,
                 current.temp,
                 current.humidity,
