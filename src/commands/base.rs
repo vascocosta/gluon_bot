@@ -3,6 +3,7 @@ use chrono::{DateTime, Datelike, Offset, Utc};
 use chrono_tz::Tz;
 use irc::client::prelude::Command;
 use irc::client::Client;
+use openweather_sdk::{Language, OpenWeather, Units};
 use rand::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -374,37 +375,51 @@ pub async fn weather(
         }
     };
 
-    match openweathermap::weather(
-        &location,
-        match options.get("owm_api_units") {
-            Some(value) => value,
-            None => "metric",
-        },
-        match options.get("owm_api_language") {
-            Some(value) => value,
-            None => "en",
-        },
+    let openweather = OpenWeather::new(
         match options.get("owm_api_key") {
-            Some(value) => value,
-            None => "",
+            Some(key) => key.to_owned(),
+            None => return String::from("Could not find OWM API key."),
         },
-    )
-    .await
+        match options.get("owm_api_units") {
+            Some(units) => match units.to_lowercase().as_str() {
+                "f" | "fahrenheit" | "imperial" => Units::Imperial,
+                "c" | "celsius" | "metric" => Units::Metric,
+                _ => Units::Standard,
+            },
+            None => Units::Standard,
+        },
+        Language::English,
+    );
+
+    let geo = match openweather
+        .geocoding
+        .get_geocoding(&location, None, None, 1)
+        .await
     {
-        Ok(current) => format!(
-            "{}, {}: {} {:.1}C | Humidity: {}% | Pressure: {}hPa | Wind: {:.1}m/s @ {} {:.1}m/s",
-            current.name,
-            current.sys.country,
-            current.weather[0].description,
-            current.main.temp,
-            current.main.humidity,
-            current.main.pressure,
-            current.wind.speed,
-            current.wind.deg,
-            current.wind.gust.unwrap_or_default(),
-        ),
+        Ok(geo) => geo,
         Err(err) => {
             eprintln!("{err}");
+
+            return String::from("Could not find location.");
+        }
+    };
+
+    match openweather.one_call.call(geo[0].lat, geo[0].lon).await {
+        Ok(weather) => match weather.current {
+            Some(current) => format!(
+                "{} {:.1}C | Humidity: {}% | Pressure: {}hPa | Wind: {:.1}m/s @ {} {:.1}m/s",
+                current.weather[0].description,
+                current.temp,
+                current.humidity,
+                current.pressure,
+                current.wind_speed,
+                current.wind_deg,
+                current.wind_gust.unwrap_or_default()
+            ),
+            None => String::from("Could not fetch current weather."),
+        },
+        Err(err) => {
+            println!("{err}");
 
             String::from("Could not fetch weather.")
         }
