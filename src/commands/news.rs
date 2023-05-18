@@ -67,7 +67,12 @@ pub async fn news(
         return String::from("Could not find any news.");
     }
 
-    for article in articles.articles.iter().take(4) {
+    let amount = match options.get("news_articles") {
+        Some(articles) => articles.parse().unwrap_or(3),
+        None => 3,
+    };
+
+    for article in articles.articles.iter().take(amount) {
         if client
             .lock()
             .await
