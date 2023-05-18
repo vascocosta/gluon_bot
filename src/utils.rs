@@ -35,7 +35,7 @@ pub fn upper_initials(text: &str) -> String {
     text.split_whitespace()
         .map(|w| {
             let mut chars = w.chars();
-            let first = chars.next().unwrap_or_default().to_string();
+            let first = chars.next().unwrap_or_default().to_uppercase();
             let rest = chars.collect::<String>();
 
             format!("{first}{rest}")
