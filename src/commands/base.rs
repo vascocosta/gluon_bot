@@ -1,4 +1,5 @@
 use crate::database::{CsvRecord, Database};
+use crate::utils;
 use chrono::{DateTime, Datelike, Offset, Utc};
 use chrono_tz::Tz;
 use irc::client::prelude::Command;
@@ -414,7 +415,7 @@ pub async fn weather(
         Ok(weather) => match weather.current {
             Some(current) => format!(
                 "{}: {} {:.1}C | Humidity: {}% | Pressure: {}hPa | Wind: {:.1}m/s @ {} {:.1}m/s",
-                location,
+                utils::upper_initials(&location),
                 current.weather[0].description,
                 current.temp,
                 current.humidity,
