@@ -411,10 +411,12 @@ pub async fn weather(
         }
     };
 
+    let mut output = String::new();
+
     match openweather.one_call.call(geo[0].lat, geo[0].lon).await {
         Ok(weather) => match weather.current {
-            Some(current) => format!(
-                "{}: {} {:.1}C | Humidity: {}% | Pressure: {}hPa | Wind: {:.1}m/s @ {} {:.1}m/s",
+            Some(current) => output.push_str(&format!(
+                "{}: {} {:.1}C | Humidity: {}% | Pressure: {}hPa | Wind: {:.1}m/s @ {} {:.1}m/s\r\n",
                 utils::upper_initials(&location),
                 current.weather[0].description,
                 current.temp,
@@ -423,13 +425,38 @@ pub async fn weather(
                 current.wind_speed,
                 current.wind_deg,
                 current.wind_gust.unwrap_or_default()
-            ),
-            None => String::from("Could not fetch current weather."),
+            )),
+            None => return String::from("Could not fetch current weather."),
         },
         Err(err) => {
-            println!("{err}");
+            eprintln!("{err}");
 
-            String::from("Could not fetch weather.")
+            return String::from("Could not fetch weather.");
         }
     }
+
+    match openweather.forecast.call(geo[0].lat, geo[0].lon, 6).await {
+        Ok(forecast) => {
+            for (i, f) in forecast.list.iter().take(3).enumerate() {
+                let time: Vec<_> = f.dt_txt.split(' ').collect();
+                let time = time.get(1).unwrap_or(&"N/A");
+
+                output.push_str(&format!(
+                    "{} UTC: {} {:.1}C",
+                    time, f.weather[0].description, f.main.temp
+                ));
+
+                if i < 2 {
+                    output.push_str(" | ")
+                }
+            }
+        }
+        Err(err) => {
+            eprintln!("{err}");
+
+            return String::from("Could not fetch forecast.");
+        }
+    }
+
+    output
 }
