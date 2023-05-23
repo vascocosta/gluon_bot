@@ -28,7 +28,7 @@ To build `gluon_bot` you need the `Rust toolchain` as well as these `dependencie
 * futures = "0.3.0"
 * irc = "0.15.0"
 * newsapi = "0.6.0"
-* openweathermap = "0.2.4"
+* openweather_sdk = "0.1.2"
 * rand = "0.8.5"
 * regex = "1.7.3"
 * reqwest = { version = "0.11.0", features = ["json"] }

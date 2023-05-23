@@ -1041,8 +1041,9 @@ dependencies = [
 
 [[package]]
 name = "openweather_sdk"
-version = "0.1.1"
-source = "git+https://github.com/vascocosta/openweather_sdk.git?branch=vascocosta#8bbbd4dc1579aadbda6b2937a97b0f5d76b11686"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3fb2c897063c0e4150fbf579ced4179ccdf82b6ec37afcbd4712e03ba872496e"
 dependencies = [
  "reqwest",
  "serde",
