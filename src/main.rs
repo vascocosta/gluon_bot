@@ -8,8 +8,10 @@ use database::Database;
 use futures::prelude::*;
 use irc::client::prelude::*;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::task;
+use tokio::time;
 
 #[tokio::main]
 async fn main() {
@@ -111,7 +113,15 @@ async fn main() {
 
                 task::spawn(async move {
                     if let Ok(bot_command) = BotCommand::new(&message, nick, &target, &options) {
-                        let output = bot_command.handle(db, client).await;
+                        let output = match time::timeout(
+                            Duration::from_secs(30),
+                            bot_command.handle(db, client),
+                        )
+                        .await
+                        {
+                            Ok(output) => output,
+                            Err(_) => String::from("Timeout while running command."),
+                        };
 
                         if let Err(error) = sender.send_privmsg(&target, output) {
                             eprintln!("{error}");
