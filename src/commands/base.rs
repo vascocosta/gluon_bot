@@ -2,6 +2,7 @@ use crate::database::{CsvRecord, Database};
 use crate::utils;
 use chrono::{DateTime, Datelike, Offset, Utc};
 use chrono_tz::Tz;
+use futures::join;
 use irc::client::prelude::Command;
 use irc::client::Client;
 use openweather_sdk::{Language, OpenWeather, Units};
@@ -411,58 +412,64 @@ pub async fn weather(
         }
     };
 
-    let current = match openweather.one_call.call(geo[0].lat, geo[0].lon).await {
-        Ok(weather) => match weather.current {
-            Some(current) => format!(
-                "{}: {} {:.1}C | Humidity: {}% | Pressure: {}hPa | Wind: {:.1}m/s @ {} {:.1}m/s\r\n",
-                utils::upper_initials(&location),
-                current.weather[0].description,
-                current.temp,
-                current.humidity,
-                current.pressure,
-                current.wind_speed,
-                current.wind_deg,
-                current.wind_gust.unwrap_or_default()
-            ),
-            None => return String::from("Could not fetch current weather."),
-        },
-        Err(err) => {
-            eprintln!("{err}");
+    let current_task = async {
+        match openweather.one_call.call(geo[0].lat, geo[0].lon).await {
+            Ok(weather) => match weather.current {
+                Some(current) => format!(
+                    "{}: {} {:.1}C | Humidity: {}% | Pressure: {}hPa | Wind: {:.1}m/s @ {} {:.1}m/s\r\n",
+                    utils::upper_initials(&location),
+                    current.weather[0].description,
+                    current.temp,
+                    current.humidity,
+                    current.pressure,
+                    current.wind_speed,
+                    current.wind_deg,
+                    current.wind_gust.unwrap_or_default()
+                ),
+                None => String::from("Could not fetch current weather."),
+            },
+            Err(err) => {
+                eprintln!("{err}");
 
-            return String::from("Could not fetch weather.");
+                String::from("Could not fetch weather.")
+            }
         }
     };
 
-    let forecast = match openweather.forecast.call(geo[0].lat, geo[0].lon, 6).await {
-        Ok(forecast) => forecast
-            .list
-            .iter()
-            .take(3)
-            .enumerate()
-            .map(|(i, f)| {
-                if i < 2 {
-                    format!(
-                        "{} UTC: {} {:.0}C | ",
-                        f.dt_txt.chars().skip(11).collect::<String>(),
-                        f.weather[0].description,
-                        f.main.temp.round()
-                    )
-                } else {
-                    format!(
-                        "{} UTC: {} {:.0}C",
-                        f.dt_txt.chars().skip(11).collect::<String>(),
-                        f.weather[0].description,
-                        f.main.temp.round()
-                    )
-                }
-            })
-            .collect::<String>(),
-        Err(err) => {
-            eprintln!("{err}");
+    let forecast_task = async {
+        match openweather.forecast.call(geo[0].lat, geo[0].lon, 6).await {
+            Ok(forecast) => forecast
+                .list
+                .iter()
+                .take(3)
+                .enumerate()
+                .map(|(i, f)| {
+                    if i < 2 {
+                        format!(
+                            "{} UTC: {} {:.0}C | ",
+                            f.dt_txt.chars().skip(11).collect::<String>(),
+                            f.weather[0].description,
+                            f.main.temp.round()
+                        )
+                    } else {
+                        format!(
+                            "{} UTC: {} {:.0}C",
+                            f.dt_txt.chars().skip(11).collect::<String>(),
+                            f.weather[0].description,
+                            f.main.temp.round()
+                        )
+                    }
+                })
+                .collect::<String>(),
+            Err(err) => {
+                eprintln!("{err}");
 
-            return String::from("Could not fetch forecast.");
+                String::from("Could not fetch forecast.")
+            }
         }
     };
+
+    let (current, forecast) = join!(current_task, forecast_task);
 
     format!("{}\r\n{}", current, forecast)
 }
