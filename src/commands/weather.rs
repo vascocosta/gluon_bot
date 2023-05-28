@@ -1,5 +1,7 @@
 use crate::database::{CsvRecord, Database};
 use crate::utils;
+use chrono::Utc;
+use chrono_tz::Tz;
 use futures::join;
 use openweather_sdk::{Language, OpenWeather, Units};
 use std::collections::HashMap;
@@ -22,6 +24,24 @@ impl CsvRecord for WeatherSetting {
 
     fn to_fields(&self) -> Vec<String> {
         vec![self.nick.clone(), self.location.clone()]
+    }
+}
+
+struct TimeZone {
+    nick: String,
+    name: String,
+}
+
+impl CsvRecord for TimeZone {
+    fn from_fields(fields: &[String]) -> Self {
+        Self {
+            nick: fields[0].clone(),
+            name: fields[1].clone(),
+        }
+    }
+
+    fn to_fields(&self) -> Vec<String> {
+        vec![self.nick.clone(), self.name.clone()]
     }
 }
 
@@ -108,6 +128,22 @@ pub async fn weather(
         }
     };
 
+    let time_zones: Vec<TimeZone> = match db.lock().await.select("time_zones", |tz: &TimeZone| {
+        tz.nick.to_lowercase() == nick.to_lowercase()
+    }) {
+        Ok(timezones_result) => match timezones_result {
+            Some(time_zones) => time_zones,
+            None => vec![TimeZone {
+                nick: nick.to_owned(),
+                name: String::from("Europe/Berlin"),
+            }],
+        },
+        Err(_) => vec![TimeZone {
+            nick: nick.to_owned(),
+            name: String::from("Europe/Berlin"),
+        }],
+    };
+
     let current_task = async {
         match openweather.one_call.call(geo[0].lat, geo[0].lon).await {
             Ok(weather) => match weather.current {
@@ -140,17 +176,29 @@ pub async fn weather(
                 .take(3)
                 .enumerate()
                 .map(|(i, f)| {
+                    let time = match format!("{} UTC", f.dt_txt).parse() {
+                        Ok(time) => time,
+                        Err(_) => Utc::now(),
+                    };
+
+                    let tz: Tz = match time_zones[0].name.parse() {
+                        Ok(time) => time,
+                        Err(_) => Tz::Europe__Berlin,
+                    };
+
+                    let time = time.with_timezone(&tz);
+
                     if i < 2 {
                         format!(
-                            "{} UTC: {} {:.0}C | ",
-                            f.dt_txt.chars().skip(11).collect::<String>(),
+                            "{}: {} {:.0}C | ",
+                            time.format("%H:%M %Z"),
                             f.weather[0].description,
                             f.main.temp.round()
                         )
                     } else {
                         format!(
-                            "{} UTC: {} {:.0}C",
-                            f.dt_txt.chars().skip(11).collect::<String>(),
+                            "{}: {} {:.0}C",
+                            time.format("%H:%M %Z"),
                             f.weather[0].description,
                             f.main.temp.round()
                         )
