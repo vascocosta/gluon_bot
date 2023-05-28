@@ -7,6 +7,7 @@ mod next;
 mod omdb;
 mod plugin;
 mod rates;
+mod weather;
 
 use crate::database::Database;
 use irc::client::Client;
@@ -68,7 +69,7 @@ impl<'a> BotCommand<'a> {
                 base::reminder(&self.args, &self.nick, &self.target, client).await
             }
             "timezone" | "tz" => base::time_zone(&self.args, &self.nick, db).await,
-            "weather" | "w" => base::weather(&self.args, &self.nick, self.options, db).await,
+            "weather" | "w" => weather::weather(&self.args, &self.nick, self.options, db).await,
             _ => plugin::plugin(&self.name, &self.args, &self.nick, self.options).await,
         }
     }
