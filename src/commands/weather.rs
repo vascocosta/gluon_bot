@@ -180,12 +180,10 @@ pub async fn weather(
                         Ok(time) => time,
                         Err(_) => Utc::now(),
                     };
-
                     let tz: Tz = match time_zones[0].name.parse() {
                         Ok(time) => time,
                         Err(_) => Tz::Europe__Berlin,
                     };
-
                     let time = time.with_timezone(&tz);
 
                     if i < 2 {
