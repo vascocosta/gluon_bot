@@ -55,7 +55,7 @@ impl Database {
             Ok(rdr) => rdr,
             Err(error) => match error.kind() {
                 csv::ErrorKind::Io(error) => match error.kind() {
-                    ErrorKind::NotFound => return Ok(Some(entities)),
+                    ErrorKind::NotFound => return Ok(None),
                     ErrorKind::PermissionDenied => {
                         return Err(Box::new(CsvDbError(String::from("Permission denied"))))
                     }
