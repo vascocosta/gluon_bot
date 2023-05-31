@@ -1,5 +1,6 @@
 mod base;
 mod city;
+mod f1bet;
 mod f1results;
 mod first;
 mod news;
@@ -63,6 +64,7 @@ impl<'a> BotCommand<'a> {
             "next" | "n" => next::next(&self.args, &self.nick, &self.target, db).await,
             "notify" => next::notify(&self.nick, &self.target, db).await,
             "ping" => base::ping().await,
+            "points" | "wbc" => f1bet::points(self.options, db).await,
             "quote" => base::quote(&self.args, &self.target, db).await,
             "rates" => rates::rates(&self.args, self.options).await,
             "remind" | "reminder" => {
