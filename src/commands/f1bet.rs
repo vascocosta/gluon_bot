@@ -67,6 +67,90 @@ impl CsvRecord for Bet {
     }
 }
 
+fn bets_log(
+    nick: &str,
+    bets: Vec<Bet>,
+    results: Vec<Bet>,
+    scoring_system: ScoringSystem,
+) -> Option<String> {
+    let user_bets: Vec<String> = bets
+        .iter()
+        .filter(|b| b.nick.to_lowercase() == nick.to_lowercase())
+        .map(|b| {
+            let bet = [
+                b.p1.to_lowercase(),
+                b.p2.to_lowercase(),
+                b.p3.to_lowercase(),
+            ];
+            let results: Vec<_> = results
+                .iter()
+                .filter(|r| r.race.to_lowercase() == b.race.to_lowercase())
+                .collect();
+
+            if results.is_empty() {
+                return (b.race.clone(), bet, b.fl.clone(), 0);
+            }
+
+            let result = [
+                results[0].p1.to_lowercase(),
+                results[0].p2.to_lowercase(),
+                results[0].p3.to_lowercase(),
+            ];
+            let zipped: Vec<(String, String)> = bet
+                .iter()
+                .zip(result.iter())
+                .filter(|(b, _)| result.contains(b))
+                .map(|(b, r)| (b.to_owned(), r.to_owned()))
+                .collect();
+            let podium_score: i32 = zipped
+                .iter()
+                .map(|(b, r)| {
+                    if b == r {
+                        scoring_system.correct
+                    } else {
+                        scoring_system.podium
+                    }
+                })
+                .sum();
+            let boost_score = if podium_score == (3 * scoring_system.correct) {
+                podium_score + scoring_system.boost
+            } else {
+                podium_score
+            };
+
+            if b.fl.to_lowercase() == results[0].fl.to_lowercase() {
+                (
+                    b.race.clone(),
+                    bet,
+                    b.fl.clone(),
+                    boost_score + scoring_system.fl,
+                )
+            } else {
+                (b.race.clone(), bet, b.fl.clone(), boost_score)
+            }
+        })
+        .rev()
+        .take(3)
+        .map(|b| {
+            format!(
+                "{}: {} {} {} {} {}",
+                b.0,
+                b.1[0].to_uppercase(),
+                b.1[1].to_uppercase(),
+                b.1[2].to_uppercase(),
+                b.2.to_uppercase(),
+                b.3
+            )
+        })
+        .collect();
+
+    if user_bets.is_empty() {
+        None
+    } else {
+        Some(user_bets.join(" | "))
+    }
+}
+
 fn score_bets(
     bets: Vec<Bet>,
     results: Vec<Bet>,
@@ -140,6 +224,37 @@ fn score_bets(
         .collect();
 
     bets_scored
+}
+
+pub async fn bet(
+    args: &[String],
+    nick: &str,
+    options: &HashMap<String, String>,
+    db: Arc<Mutex<Database>>,
+) -> String {
+    let bets: Vec<Bet> = match db.lock().await.select("bets", |_| true) {
+        Ok(bets_result) => match bets_result {
+            Some(bets) => bets,
+            None => return String::from("Could not find any bets."),
+        },
+        Err(_) => return String::from("Could not find any bets."),
+    };
+    let results: Vec<Bet> = match db.lock().await.select("results", |_| true) {
+        Ok(bets_result) => match bets_result {
+            Some(bets) => bets,
+            None => return String::from("Could not find any results."),
+        },
+        Err(_) => return String::from("Could not find any results."),
+    };
+
+    if args.len() == 1 && args[0].to_lowercase() == "log" {
+        match bets_log(nick, bets, results, ScoringSystem::from_options(options)) {
+            Some(bets_log) => return bets_log,
+            None => return String::from("Could not find any bets."),
+        }
+    }
+
+    String::from("Not implemented yet...")
 }
 
 pub async fn points(options: &HashMap<String, String>, db: Arc<Mutex<Database>>) -> String {
