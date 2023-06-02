@@ -11,6 +11,29 @@ struct ScoringSystem {
     podium: i32,
 }
 
+impl ScoringSystem {
+    fn from_options(options: &HashMap<String, String>) -> Self {
+        ScoringSystem {
+            boost: match options.get("f1bet_boost") {
+                Some(boost) => boost.parse().unwrap_or(10),
+                None => 10,
+            },
+            correct: match options.get("f1bet_correct") {
+                Some(correct) => correct.parse().unwrap_or(5),
+                None => 5,
+            },
+            fl: match options.get("f1bet_fl") {
+                Some(fl) => fl.parse().unwrap_or(1),
+                None => 1,
+            },
+            podium: match options.get("f1bet_podium") {
+                Some(podium) => podium.parse().unwrap_or(3),
+                None => 3,
+            },
+        }
+    }
+}
+
 struct Bet {
     race: String,
     nick: String,
@@ -134,33 +157,8 @@ pub async fn points(options: &HashMap<String, String>, db: Arc<Mutex<Database>>)
         },
         Err(_) => return String::from("Could not find any results."),
     };
-    let boost: i32 = match options.get("f1bet_boost") {
-        Some(boost) => boost.parse().unwrap_or(10),
-        None => 10,
-    };
-    let correct: i32 = match options.get("f1bet_correct") {
-        Some(correct) => correct.parse().unwrap_or(5),
-        None => 5,
-    };
-    let fl: i32 = match options.get("f1bet_fl") {
-        Some(fl) => fl.parse().unwrap_or(1),
-        None => 1,
-    };
-    let podium: i32 = match options.get("f1bet_podium") {
-        Some(podium) => podium.parse().unwrap_or(3),
-        None => 3,
-    };
 
-    let bets_scored = score_bets(
-        bets,
-        results,
-        ScoringSystem {
-            boost,
-            correct,
-            fl,
-            podium,
-        },
-    );
+    let bets_scored = score_bets(bets, results, ScoringSystem::from_options(options));
 
     bets_scored
         .iter()
