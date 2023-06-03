@@ -332,8 +332,15 @@ pub async fn bet(
     options: &HashMap<String, String>,
     db: Arc<Mutex<Database>>,
 ) -> String {
+    let next_race = match next_race(target, Arc::clone(&db)).await {
+        Some(next_race) => next_race,
+        None => return String::from("Could not find next race."),
+    };
+
     if args.is_empty() || (args.len() == 1 && args[0].to_lowercase() == "log") {
-        let bets: Vec<Bet> = match db.lock().await.select("bets", |_| true) {
+        let bets: Vec<Bet> = match db.lock().await.select("bets", |b: &Bet| {
+            b.nick.to_lowercase() == nick.to_lowercase()
+        }) {
             Ok(bets_result) => match bets_result {
                 Some(bets) => bets,
                 None => return String::from("Could not find any bets."),
@@ -348,6 +355,15 @@ pub async fn bet(
             Err(_) => return String::from("Could not find any results."),
         };
 
+        match bets.last() {
+            Some(last_bet) => {
+                if last_bet.race.to_lowercase() != next_race.name.to_lowercase() {
+                    return String::from("You haven't placed a bet for the current race yet.");
+                }
+            }
+            None => return String::from("You haven't placed a bet for the current race yet."),
+        }
+
         match bets_log(nick, bets, results, ScoringSystem::from_options(options)) {
             Some(bets_log) => return bets_log,
             None => return String::from("Could not find any bets."),
@@ -361,11 +377,6 @@ pub async fn bet(
     if !valid_drivers(args, Arc::clone(&db)).await {
         return String::from("Invalid drivers.");
     }
-
-    let next_race = match next_race(target, Arc::clone(&db)).await {
-        Some(next_race) => next_race,
-        None => return String::from("Could not find next race."),
-    };
 
     match db.lock().await.update(
         "bets",
