@@ -1,8 +1,66 @@
 use crate::database::{CsvRecord, Database};
+use chrono::{DateTime, Utc};
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
+struct Driver {
+    number: u32,
+    code: String,
+}
+
+impl CsvRecord for Driver {
+    fn from_fields(fields: &[String]) -> Self {
+        Self {
+            number: fields[0].parse().unwrap_or(0),
+            code: fields[1].clone(),
+        }
+    }
+
+    fn to_fields(&self) -> Vec<String> {
+        vec![self.number.to_string(), self.code.clone()]
+    }
+}
+
+struct Event {
+    category: String,
+    name: String,
+    description: String,
+    datetime: DateTime<Utc>,
+    channel: String,
+    tags: String,
+    notify: bool,
+}
+
+impl CsvRecord for Event {
+    fn from_fields(fields: &[String]) -> Self {
+        Self {
+            category: fields[0].clone(),
+            name: fields[1].clone(),
+            description: fields[2].clone(),
+            datetime: match fields[3].parse() {
+                Ok(datetime) => datetime,
+                Err(_) => Utc::now(),
+            },
+            channel: fields[4].clone(),
+            tags: fields[5].clone(),
+            notify: false,
+        }
+    }
+
+    fn to_fields(&self) -> Vec<String> {
+        vec![
+            self.category.clone(),
+            self.name.clone(),
+            self.description.clone(),
+            self.datetime.to_string(),
+            self.channel.clone(),
+            self.tags.clone(),
+            self.notify.to_string(),
+        ]
+    }
+}
 
 struct ScoringSystem {
     boost: i32,
@@ -34,6 +92,7 @@ impl ScoringSystem {
     }
 }
 
+#[derive(PartialEq)]
 struct Bet {
     race: String,
     nick: String,
@@ -64,6 +123,46 @@ impl CsvRecord for Bet {
             self.p3.clone(),
             self.fl.clone(),
         ]
+    }
+}
+
+async fn valid_drivers(drivers: &[String], db: Arc<Mutex<Database>>) -> bool {
+    let podium_drivers: Vec<Driver> = match db.lock().await.select("drivers", |d: &Driver| {
+        d.code.to_lowercase() == drivers[0].to_lowercase()
+            || d.code.to_lowercase() == drivers[1].to_lowercase()
+            || d.code.to_lowercase() == drivers[2].to_lowercase()
+    }) {
+        Ok(drivers_result) => match drivers_result {
+            Some(drivers) => drivers,
+            None => return false,
+        },
+        Err(_) => return false,
+    };
+    let fl_driver: Vec<Driver> = match db.lock().await.select("drivers", |d: &Driver| {
+        d.code.to_lowercase() == drivers[3].to_lowercase()
+    }) {
+        Ok(drivers_result) => match drivers_result {
+            Some(drivers) => drivers,
+            None => return false,
+        },
+        Err(_) => return false,
+    };
+
+    podium_drivers.len() + fl_driver.len() == 4
+}
+
+async fn next_race(target: &str, db: Arc<Mutex<Database>>) -> Option<Event> {
+    match db.lock().await.select("events", |e: &Event| {
+        e.datetime > Utc::now()
+            && e.channel.to_lowercase() == target.to_lowercase()
+            && e.category.to_lowercase().contains("formula 1")
+            && e.description.eq_ignore_ascii_case("race")
+    }) {
+        Ok(events_result) => match events_result {
+            Some(events) => events.into_iter().next(),
+            None => None,
+        },
+        Err(_) => None,
     }
 }
 
@@ -229,32 +328,66 @@ fn score_bets(
 pub async fn bet(
     args: &[String],
     nick: &str,
+    target: &str,
     options: &HashMap<String, String>,
     db: Arc<Mutex<Database>>,
 ) -> String {
-    let bets: Vec<Bet> = match db.lock().await.select("bets", |_| true) {
-        Ok(bets_result) => match bets_result {
-            Some(bets) => bets,
-            None => return String::from("Could not find any bets."),
-        },
-        Err(_) => return String::from("Could not find any bets."),
-    };
-    let results: Vec<Bet> = match db.lock().await.select("results", |_| true) {
-        Ok(bets_result) => match bets_result {
-            Some(bets) => bets,
-            None => return String::from("Could not find any results."),
-        },
-        Err(_) => return String::from("Could not find any results."),
-    };
+    if args.is_empty() || (args.len() == 1 && args[0].to_lowercase() == "log") {
+        let bets: Vec<Bet> = match db.lock().await.select("bets", |_| true) {
+            Ok(bets_result) => match bets_result {
+                Some(bets) => bets,
+                None => return String::from("Could not find any bets."),
+            },
+            Err(_) => return String::from("Could not find any bets."),
+        };
+        let results: Vec<Bet> = match db.lock().await.select("results", |_| true) {
+            Ok(bets_result) => match bets_result {
+                Some(bets) => bets,
+                None => return String::from("Could not find any results."),
+            },
+            Err(_) => return String::from("Could not find any results."),
+        };
 
-    if args.len() == 1 && args[0].to_lowercase() == "log" {
         match bets_log(nick, bets, results, ScoringSystem::from_options(options)) {
             Some(bets_log) => return bets_log,
             None => return String::from("Could not find any bets."),
         }
     }
 
-    String::from("Not implemented yet...")
+    if args.len() != 4 {
+        return String::from("The bet must contain 4 drivers: <1st> <2nd> <3rd> <fl>.");
+    }
+
+    if !valid_drivers(args, Arc::clone(&db)).await {
+        return String::from("Invalid drivers.");
+    }
+
+    let next_race = match next_race(target, Arc::clone(&db)).await {
+        Some(next_race) => next_race,
+        None => return String::from("Could not find next race."),
+    };
+
+    match db.lock().await.update(
+        "bets",
+        Bet {
+            race: next_race.name.clone(),
+            nick: nick.to_lowercase(),
+            p1: args[0].to_lowercase(),
+            p2: args[1].to_lowercase(),
+            p3: args[2].to_lowercase(),
+            fl: args[3].to_lowercase(),
+        },
+        |b: &&Bet| {
+            b.race.to_lowercase() == next_race.name.to_lowercase()
+                && b.nick.to_lowercase() == nick.to_lowercase()
+        },
+    ) {
+        Ok(()) => format!(
+            "Your bet for the {} was successfully updated.",
+            next_race.name
+        ),
+        Err(_) => String::from("Problem updating your bet."),
+    }
 }
 
 pub async fn points(options: &HashMap<String, String>, db: Arc<Mutex<Database>>) -> String {

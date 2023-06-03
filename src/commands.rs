@@ -49,7 +49,7 @@ impl<'a> BotCommand<'a> {
         match &self.name[..] {
             "alarm" => base::alarm(&self.args, &self.nick, &self.target, db, client).await,
             "ask" => base::ask(&self.args, db).await,
-            "_bet" => f1bet::bet(&self.args, &self.nick, self.options, db).await,
+            "bet" => f1bet::bet(&self.args, &self.nick, &self.target, self.options, db).await,
             "city" => city::city(&self.args, db).await,
             "date" | "time" => base::date_time().await,
             "f1results" => f1results::f1results().await,
