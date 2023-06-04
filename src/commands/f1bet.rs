@@ -171,6 +171,7 @@ fn bets_log(
     bets: Vec<Bet>,
     results: Vec<Bet>,
     scoring_system: ScoringSystem,
+    amount: usize,
 ) -> Option<String> {
     let user_bets: Vec<String> = bets
         .iter()
@@ -229,7 +230,7 @@ fn bets_log(
             }
         })
         .rev()
-        .take(3)
+        .take(amount)
         .map(|b| {
             format!(
                 "{}: {} {} {} {} {}",
@@ -246,7 +247,7 @@ fn bets_log(
     if user_bets.is_empty() {
         None
     } else {
-        Some(user_bets.join(" | "))
+        Some(user_bets.join("\r\n"))
     }
 }
 
@@ -337,7 +338,7 @@ pub async fn bet(
         None => return String::from("Could not find next race."),
     };
 
-    if args.is_empty() || (args.len() == 1 && args[0].to_lowercase() == "log") {
+    if args.len() <= 1 {
         let bets: Vec<Bet> = match db.lock().await.select("bets", |b: &Bet| {
             b.nick.to_lowercase() == nick.to_lowercase()
         }) {
@@ -355,18 +356,41 @@ pub async fn bet(
             Err(_) => return String::from("Could not find any results."),
         };
 
-        match bets.last() {
-            Some(last_bet) => {
-                if last_bet.race.to_lowercase() != next_race.name.to_lowercase() {
-                    return String::from("You haven't placed a bet for the current race yet.");
+        if args.is_empty() {
+            match bets.last() {
+                Some(last_bet) => {
+                    if last_bet.race.to_lowercase() != next_race.name.to_lowercase() {
+                        return String::from("You haven't placed a bet for the current race yet.");
+                    }
                 }
+                None => return String::from("You haven't placed a bet for the current race yet."),
             }
-            None => return String::from("You haven't placed a bet for the current race yet."),
+
+            match bets_log(nick, bets, results, ScoringSystem::from_options(options), 1) {
+                Some(bets_log) => return bets_log,
+                None => return String::from("Could not find any bets."),
+            }
         }
 
-        match bets_log(nick, bets, results, ScoringSystem::from_options(options)) {
-            Some(bets_log) => return bets_log,
-            None => return String::from("Could not find any bets."),
+        let arg = args.get(0).unwrap_or(&String::from("")).to_lowercase();
+
+        match arg.as_str() {
+            "log" => match bets_log(nick, bets, results, ScoringSystem::from_options(options), 3) {
+                Some(bets_log) => return bets_log,
+                None => return String::from("Could not find any bets."),
+            },
+            "history" => match bets_log(
+                nick,
+                bets,
+                results,
+                ScoringSystem::from_options(options),
+                10,
+            ) {
+                Some(bets_log) => return bets_log,
+                None => return String::from("Could not find any bets."),
+            },
+            "points" | "wbc" => return points(options, db).await,
+            _ => return String::from("Unknown sub command."),
         }
     }
 
