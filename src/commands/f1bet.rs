@@ -389,7 +389,8 @@ pub async fn bet(
                 Some(bets_log) => return bets_log,
                 None => return String::from("Could not find any bets."),
             },
-            "points" | "wbc" => return points(options, db).await,
+            "last_points" | "lastpoints" => return points(true, options, db).await,
+            "points" | "wbc" => return points(false, options, db).await,
             _ => return String::from("Unknown sub command."),
         }
     }
@@ -425,7 +426,11 @@ pub async fn bet(
     }
 }
 
-pub async fn points(options: &HashMap<String, String>, db: Arc<Mutex<Database>>) -> String {
+pub async fn points(
+    last: bool,
+    options: &HashMap<String, String>,
+    db: Arc<Mutex<Database>>,
+) -> String {
     let bets: Vec<Bet> = match db.lock().await.select("bets", |_| true) {
         Ok(bets_result) => match bets_result {
             Some(bets) => bets,
@@ -441,7 +446,21 @@ pub async fn points(options: &HashMap<String, String>, db: Arc<Mutex<Database>>)
         Err(_) => return String::from("Could not find any results."),
     };
 
-    let bets_scored = score_bets(bets, results, ScoringSystem::from_options(options));
+    let bets_scored = if last {
+        let last_result = match results.last() {
+            Some(last_result) => last_result,
+            None => return String::from("Could not find the last result."),
+        };
+        score_bets(
+            bets.into_iter()
+                .filter(|b| b.race.to_lowercase() == last_result.race.to_lowercase())
+                .collect::<Vec<Bet>>(),
+            results,
+            ScoringSystem::from_options(options),
+        )
+    } else {
+        score_bets(bets, results, ScoringSystem::from_options(options))
+    };
 
     bets_scored
         .iter()
