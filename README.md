@@ -9,7 +9,7 @@ General purpose IRC bot written in Rust.
 * Performance
 * Reliability
 * Events (search, announce and notify)
-* Games
+* Games (f1 bet, first, etc)
 * Plugins (language agnostic)
 * Quotes
 * RSS/Atom feeds
