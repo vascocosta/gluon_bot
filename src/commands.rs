@@ -2,6 +2,7 @@ mod base;
 mod city;
 mod f1bet;
 mod f1results;
+mod f1standings;
 mod first;
 mod news;
 mod next;
@@ -53,6 +54,7 @@ impl<'a> BotCommand<'a> {
             "city" => city::city(&self.args, db).await,
             "date" | "time" => base::date_time().await,
             "f1results" => f1results::f1results().await,
+            "f1standings" | "standings" | "wcc" | "wdc" => f1standings::f1standings().await,
             "first" | "1st" => {
                 first::first(&self.nick, &self.target, self.options, db, client).await
             }
