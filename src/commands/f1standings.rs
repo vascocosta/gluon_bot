@@ -196,10 +196,13 @@ pub async fn f1standings() -> String {
             .driver_standings
             .iter()
             .map(|s| {
-                format!(
-                    "{}. {} ({} wins) {}",
-                    s.position, s.driver.code, s.wins, s.points
-                )
+                let wins_str = if s.wins != "0" {
+                    format!(" ({} wins)", s.wins)
+                } else {
+                    String::new()
+                };
+
+                format!("{}. {} {}{}", s.position, s.driver.code, s.points, wins_str)
             })
             .collect::<Vec<String>>()
             .join(" | ")
