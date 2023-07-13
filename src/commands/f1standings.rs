@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use futures::join;
 
 const ERGAST_API_URL: &str = "http://ergast.com/api/f1/current";
@@ -139,6 +141,21 @@ mod wdc_models {
     }
 }
 
+pub fn team_alias(name: &str) -> String {
+    let aliases = HashMap::from([
+        ("red bull", "RBR"),
+        ("aston martin", "AMR"),
+        ("alpine f1 team", "Alpine"),
+        ("haas f1 team", "Haas"),
+        ("alphatauri", "AT"),
+    ]);
+
+    match aliases.get(&*name.to_lowercase()) {
+        Some(alias) => String::from(*alias),
+        None => String::from(name),
+    }
+}
+
 pub async fn f1standings() -> String {
     let wcc_task = async {
         let wcc: wcc_models::Wcc =
@@ -153,7 +170,14 @@ pub async fn f1standings() -> String {
         wcc.mrdata.standings_table.standings_lists[0]
             .constructor_standings
             .iter()
-            .map(|s| format!("{}. {} {}", s.position, s.constructor.name, s.points))
+            .map(|s| {
+                format!(
+                    "{}. {} {}",
+                    s.position,
+                    team_alias(&s.constructor.name),
+                    s.points
+                )
+            })
             .collect::<Vec<String>>()
             .join(" | ")
     };
