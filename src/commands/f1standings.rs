@@ -1,6 +1,5 @@
 use std::collections::HashMap;
-
-use futures::join;
+use tokio::task;
 
 const ERGAST_API_URL: &str = "http://ergast.com/api/f1/current";
 
@@ -157,14 +156,14 @@ pub fn team_alias(name: &str) -> String {
 }
 
 pub async fn f1standings() -> String {
-    let wcc_task = async {
+    let wcc_task = task::spawn(async {
         let wcc: wcc_models::Wcc =
             match reqwest::get(format!("{}/constructorStandings.json", ERGAST_API_URL)).await {
                 Ok(response) => match response.json().await {
                     Ok(wcc) => wcc,
-                    Err(_) => return String::from("Could not decode data."),
+                    Err(_) => return String::from("Could not decode WCC data."),
                 },
-                Err(_) => return String::from("Could not fetch data."),
+                Err(_) => return String::from("Could not fetch WCC data."),
             };
 
         wcc.mrdata.standings_table.standings_lists[0]
@@ -180,16 +179,16 @@ pub async fn f1standings() -> String {
             })
             .collect::<Vec<String>>()
             .join(" | ")
-    };
+    });
 
-    let wdc_task = async {
+    let wdc_task = task::spawn(async {
         let wdc: wdc_models::Wdc =
             match reqwest::get(format!("{}/driverStandings.json", ERGAST_API_URL)).await {
                 Ok(response) => match response.json().await {
                     Ok(wcc) => wcc,
-                    Err(_) => return String::from("Could not decode data."),
+                    Err(_) => return String::from("Could not decode WDC data."),
                 },
-                Err(_) => return String::from("Could not fetch data."),
+                Err(_) => return String::from("Could not fetch WDC data."),
             };
 
         wdc.mrdata.standings_table.standings_lists[0]
@@ -206,9 +205,12 @@ pub async fn f1standings() -> String {
             })
             .collect::<Vec<String>>()
             .join(" | ")
-    };
+    });
 
-    let (wcc, wdc) = join!(wcc_task, wdc_task);
+    let (wcc, wdc) = tokio::try_join!(wcc_task, wdc_task).unwrap_or((
+        String::from("Could not fetch WCC data."),
+        String::from("Could not fetch WDC data."),
+    ));
 
     format!("WCC: {} \r\nWDC: {}", wcc, wdc)
 }
