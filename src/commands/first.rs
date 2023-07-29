@@ -2,6 +2,7 @@ use crate::database::{CsvRecord, Database};
 use chrono::{DateTime, Datelike, Days, Timelike, Utc, Weekday};
 use chrono_tz::Tz;
 use irc::{client::Client, proto::Command};
+use rand::prelude::*;
 use regex::Regex;
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 use tokio::sync::Mutex;
@@ -192,7 +193,11 @@ pub async fn first(
                 0..=23 => open_hour,
                 _ => 5,
             },
-            Err(_) => 5,
+            Err(_) => {
+                let mut rng = StdRng::seed_from_u64(utc_now.day() as u64);
+
+                rng.gen_range(5..14)
+            }
         },
         None => 5,
     };
