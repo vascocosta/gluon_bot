@@ -4,8 +4,15 @@ use chrono_tz::Tz;
 use irc::{client::Client, proto::Command};
 use rand::prelude::*;
 use regex::Regex;
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, ops::Range, str::FromStr, sync::Arc};
 use tokio::sync::Mutex;
+
+const DEFAULT_OPEN_HOUR: u32 = 5;
+const DEFAULT_OPEN_MIN: u32 = 0;
+const DEFAULT_CLOSE_HOUR: u32 = 21;
+const DEFAULT_CLOSE_MIN: u32 = 0;
+const RAND_OPEN_HOUR: Range<u32> = 5..12;
+const RAND_OPEN_MIN: Range<u32> = 0..59;
 
 #[derive(Debug, PartialEq)]
 struct FirstStat {
@@ -137,21 +144,21 @@ pub async fn first(
         Some(close_hour) => match close_hour.parse() {
             Ok(close_hour) => match close_hour {
                 0..=23 => close_hour,
-                _ => 21,
+                _ => DEFAULT_CLOSE_HOUR,
             },
-            Err(_) => 21,
+            Err(_) => DEFAULT_CLOSE_HOUR,
         },
-        None => 21,
+        None => DEFAULT_CLOSE_HOUR,
     };
     let close_min = match options.get("first_close_min") {
         Some(close_min) => match close_min.parse() {
             Ok(close_min) => match close_min {
                 0..=59 => close_min,
-                _ => 0,
+                _ => DEFAULT_CLOSE_MIN,
             },
-            Err(_) => 0,
+            Err(_) => DEFAULT_CLOSE_MIN,
         },
-        None => 0,
+        None => DEFAULT_CLOSE_MIN,
     };
 
     if utc_now.hour() > close_hour
@@ -191,12 +198,12 @@ pub async fn first(
         Some(open_hour) => match open_hour.parse() {
             Ok(open_hour) => match open_hour {
                 0..=23 => open_hour,
-                _ => 5,
+                _ => DEFAULT_OPEN_HOUR,
             },
             Err(_) => {
                 let mut rng = StdRng::seed_from_u64(utc_now.day() as u64);
 
-                rng.gen_range(5..14)
+                rng.gen_range(RAND_OPEN_HOUR)
             }
         },
         None => 5,
@@ -205,9 +212,13 @@ pub async fn first(
         Some(open_min) => match open_min.parse() {
             Ok(open_min) => match open_min {
                 0..=59 => open_min,
-                _ => 30,
+                _ => DEFAULT_OPEN_MIN,
             },
-            Err(_) => 30,
+            Err(_) => {
+                let mut rng = StdRng::seed_from_u64(utc_now.day() as u64);
+
+                rng.gen_range(RAND_OPEN_MIN)
+            }
         },
         None => 30,
     };
