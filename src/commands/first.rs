@@ -274,7 +274,10 @@ pub async fn first(
 
     show_results(&mut first_results, Some(nick), target, client).await;
 
-    String::new()
+    format!(
+        "STATUS open (opened at {:0>2}H{:0>2} {})",
+        open_hour, open_min, tz
+    )
 }
 
 pub async fn first_stats(target: &str, db: Arc<Mutex<Database>>) -> String {
