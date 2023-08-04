@@ -114,7 +114,7 @@ async fn main() {
                 task::spawn(async move {
                     if let Ok(bot_command) = BotCommand::new(&message, nick, &target, &options) {
                         let output = match time::timeout(
-                            Duration::from_secs(30),
+                            Duration::from_secs(bot_command.timeout),
                             bot_command.handle(db, client),
                         )
                         .await

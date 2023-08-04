@@ -18,11 +18,12 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 pub struct BotCommand<'a> {
-    name: String,
-    args: Vec<String>,
-    nick: String,
-    target: String,
-    options: &'a HashMap<String, String>,
+    pub name: String,
+    pub args: Vec<String>,
+    pub nick: String,
+    pub target: String,
+    pub timeout: u64,
+    pub options: &'a HashMap<String, String>,
 }
 
 impl<'a> BotCommand<'a> {
@@ -33,15 +34,24 @@ impl<'a> BotCommand<'a> {
         options: &'a HashMap<String, String>,
     ) -> Result<Self, &'static str> {
         let split_message: Vec<&str> = message.split_ascii_whitespace().collect();
+        let name = split_message[0][1..].to_lowercase();
+        let args = split_message[1..].iter().map(|a| a.to_string()).collect();
+        let nick = match nick {
+            Some(nick) => nick,
+            None => return Err("Could not parse nick"),
+        };
+        let target = String::from(target);
+        let timeout = match name.as_str() {
+            "alarm" | "remind" | "reminder" => 86400,
+            _ => 30,
+        };
 
         Ok(Self {
-            name: split_message[0][1..].to_string(),
-            args: split_message[1..].iter().map(|a| a.to_string()).collect(),
-            nick: match nick {
-                Some(nick) => nick,
-                None => return Err("Could not parse nick"),
-            },
-            target: String::from(target),
+            name,
+            args,
+            nick,
+            target,
+            timeout,
             options,
         })
     }
