@@ -1,3 +1,4 @@
+mod api;
 mod commands;
 mod database;
 mod tasks;
@@ -12,6 +13,9 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::task;
 use tokio::time;
+
+#[macro_use]
+extern crate rocket;
 
 #[tokio::main]
 async fn main() {
@@ -61,6 +65,21 @@ async fn main() {
         },
         None,
     )));
+
+    let db_clone = Arc::clone(&db);
+
+    // Spawn a background task to handle API requests to the bot.
+    task::spawn(async move {
+        let my_state = api::BotState { db: db_clone };
+
+        let _rocket = rocket::build()
+            .mount("/", routes![api::f1bets])
+            .manage(my_state)
+            .launch()
+            .await
+            .unwrap();
+    });
+
     let mut stream = match client.lock().await.stream() {
         Ok(stream) => stream,
         Err(error) => {
