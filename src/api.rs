@@ -42,14 +42,49 @@ pub struct BotState {
     pub db: Arc<Mutex<Database>>,
 }
 
-#[get("/f1bets/<race>")]
-pub async fn f1bets(race: &str, state: &rocket::State<BotState>) -> Json<Vec<Bet>> {
+fn lookup_race(race: &str) -> String {
+    let result = match race.to_lowercase().as_str() {
+        "bahrain" | "sakhir" => "bahrain",
+        "saudi arabia" => "saudi arabian",
+        "australia" | "melbourne" => "australian",
+        "azerbaijan" | "baku" => "azerbaijan",
+        "miami" => "miami",
+        "imola" | "san marino" => "emilia-romagna",
+        "monaco" => "monaco",
+        "spain" | "barcelona" => "spanish",
+        "canada" => "canadian",
+        "austria" | "spielberg" | "red bull ring" => "austrian",
+        "great britain" | "uk" | "silverstone" => "british",
+        "hungary" => "hungarian",
+        "belgium" | "spa" => "belgian",
+        "netherlands" | "zandvoort" => "dutch",
+        "italy" | "monza" => "italian",
+        "singapore" => "singapore",
+        "japan" | "suzuka" => "japanese",
+        "qatar" => "qatar",
+        "united states" | "usa" | "austin" | "texas" | "cota" => "united states",
+        "mexico" => "mexican",
+        "brazil" | "sao paulo" | "interlagos" => "brazilian",
+        "las vegas" | "vegas" => "las vegas",
+        "abu dhabi" => "dhabi",
+        _ => race,
+    };
+
+    result.to_lowercase()
+}
+
+#[get("/f1bets?<race>")]
+pub async fn f1bets(race: Option<&str>, state: &rocket::State<BotState>) -> Json<Vec<Bet>> {
     let bets = state
         .db
         .lock()
         .await
-        .select("bets", |b: &Bet| {
-            b.race.to_lowercase().contains(race.to_lowercase().as_str())
+        .select("bets", |b: &Bet| match race {
+            Some(race) => b
+                .race
+                .to_lowercase()
+                .contains(lookup_race(race).to_lowercase().as_str()),
+            None => true,
         })
         .unwrap_or_default()
         .unwrap_or_default();
