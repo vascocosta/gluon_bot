@@ -1,4 +1,5 @@
 use crate::database::{CsvRecord, Database};
+use chrono::{DateTime, Utc};
 use rocket::serde::{json::Json, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -38,6 +39,47 @@ impl CsvRecord for Bet {
     }
 }
 
+#[derive(Serialize)]
+#[serde(crate = "rocket::serde")]
+pub struct Event {
+    category: String,
+    name: String,
+    description: String,
+    datetime: DateTime<Utc>,
+    channel: String,
+    tags: String,
+    notify: bool,
+}
+
+impl CsvRecord for Event {
+    fn from_fields(fields: &[String]) -> Self {
+        Self {
+            category: fields[0].clone(),
+            name: fields[1].clone(),
+            description: fields[2].clone(),
+            datetime: match fields[3].parse() {
+                Ok(datetime) => datetime,
+                Err(_) => Utc::now(),
+            },
+            channel: fields[4].clone(),
+            tags: fields[5].clone(),
+            notify: false,
+        }
+    }
+
+    fn to_fields(&self) -> Vec<String> {
+        vec![
+            self.category.clone(),
+            self.name.clone(),
+            self.description.clone(),
+            self.datetime.to_string(),
+            self.channel.clone(),
+            self.tags.clone(),
+            self.notify.to_string(),
+        ]
+    }
+}
+
 pub struct BotState {
     pub db: Arc<Mutex<Database>>,
 }
@@ -71,6 +113,34 @@ fn lookup_race(race: &str) -> String {
     };
 
     result.to_lowercase()
+}
+
+#[get("/events?<category>&<name>&<description>")]
+pub async fn events(
+    category: Option<&str>,
+    name: Option<&str>,
+    description: Option<&str>,
+    state: &rocket::State<BotState>,
+) -> Json<Vec<Event>> {
+    let events = state
+        .db
+        .lock()
+        .await
+        .select("events", |e: &Event| {
+            e.category
+                .to_lowercase()
+                .contains(category.unwrap_or_default().to_lowercase().as_str())
+                && e.name
+                    .to_lowercase()
+                    .contains(name.unwrap_or_default().to_lowercase().as_str())
+                && e.description
+                    .to_lowercase()
+                    .contains(description.unwrap_or_default().to_lowercase().as_str())
+        })
+        .unwrap_or_default()
+        .unwrap_or_default();
+
+    Json(events)
 }
 
 #[get("/f1bets?<race>&<nick>")]

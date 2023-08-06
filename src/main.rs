@@ -73,7 +73,7 @@ async fn main() {
         let my_state = api::BotState { db: db_clone };
 
         let _rocket = rocket::build()
-            .mount("/api", routes![api::f1bets])
+            .mount("/api", routes![api::f1bets, api::events])
             .manage(my_state)
             .launch()
             .await
