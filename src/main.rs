@@ -66,20 +66,6 @@ async fn main() {
         None,
     )));
 
-    let db_clone = Arc::clone(&db);
-
-    // Spawn a background task to handle API requests to the bot.
-    task::spawn(async move {
-        let my_state = api::BotState { db: db_clone };
-
-        let _rocket = rocket::build()
-            .mount("/api", routes![api::f1bets, api::events])
-            .manage(my_state)
-            .launch()
-            .await
-            .unwrap();
-    });
-
     let mut stream = match client.lock().await.stream() {
         Ok(stream) => stream,
         Err(error) => {
@@ -92,6 +78,24 @@ async fn main() {
     if let Err(error) = client.lock().await.identify() {
         eprintln!("{error}");
     }
+
+    let client_clone = Arc::clone(&client);
+    let db_clone = Arc::clone(&db);
+
+    // Spawn a background task to handle API requests to the bot.
+    task::spawn(async move {
+        let my_state = api::BotState {
+            client: client_clone,
+            db: db_clone,
+        };
+
+        let _rocket = rocket::build()
+            .mount("/api", routes![api::f1bets, api::events, api::say])
+            .manage(my_state)
+            .launch()
+            .await
+            .unwrap();
+    });
 
     let client_clone = Arc::clone(&client);
     let db_clone = Arc::clone(&db);
