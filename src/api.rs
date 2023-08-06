@@ -73,18 +73,25 @@ fn lookup_race(race: &str) -> String {
     result.to_lowercase()
 }
 
-#[get("/f1bets?<race>")]
-pub async fn f1bets(race: Option<&str>, state: &rocket::State<BotState>) -> Json<Vec<Bet>> {
+#[get("/f1bets?<race>&<nick>")]
+pub async fn f1bets(
+    race: Option<&str>,
+    nick: Option<&str>,
+    state: &rocket::State<BotState>,
+) -> Json<Vec<Bet>> {
     let bets = state
         .db
         .lock()
         .await
-        .select("bets", |b: &Bet| match race {
-            Some(race) => b
-                .race
+        .select("bets", |b: &Bet| {
+            b.race.to_lowercase().contains(
+                lookup_race(race.unwrap_or_default())
+                    .to_lowercase()
+                    .as_str(),
+            ) && b
+                .nick
                 .to_lowercase()
-                .contains(lookup_race(race).to_lowercase().as_str()),
-            None => true,
+                .contains(nick.unwrap_or_default().to_lowercase().as_str())
         })
         .unwrap_or_default()
         .unwrap_or_default();
