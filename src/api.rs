@@ -2,57 +2,15 @@ use crate::database::{CsvRecord, Database};
 use chrono::{DateTime, Utc};
 use irc::client::prelude::Command;
 use irc::client::Client;
-use rocket::{
-    data::{FromData, Outcome, ToByteUnit},
-    http::Status,
-    serde::{json::Json, Serialize},
-    Data, Request,
-};
+use rocket::serde::json::Json;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tokio::{io::AsyncReadExt, sync::Mutex};
+use tokio::sync::Mutex;
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct Message {
     channel: String,
     body: String,
-}
-
-#[rocket::async_trait]
-impl<'r> FromData<'r> for Message {
-    type Error = std::io::Error;
-
-    async fn from_data(_req: &'r Request<'_>, data: Data<'r>) -> rocket::data::Outcome<'r, Self> {
-        let mut raw_data = String::new();
-
-        if let Err(err) = data.open(2.mebibytes()).read_to_string(&mut raw_data).await {
-            return Outcome::Failure((Status::InternalServerError, err));
-        }
-
-        let mut split = raw_data.split("---");
-        let channel = match split.next() {
-            Some(channel) => channel,
-            None => {
-                return Outcome::Failure((
-                    Status::InternalServerError,
-                    std::io::Error::new(std::io::ErrorKind::Other, "Problem parsing"),
-                ))
-            }
-        };
-        let body = match split.next() {
-            Some(body) => body,
-            None => {
-                return Outcome::Failure((
-                    Status::InternalServerError,
-                    std::io::Error::new(std::io::ErrorKind::Other, "Problem parsing"),
-                ))
-            }
-        };
-
-        Outcome::Success(Message {
-            channel: String::from(channel),
-            body: String::from(body),
-        })
-    }
 }
 
 #[derive(Serialize)]
@@ -221,14 +179,12 @@ pub async fn f1bets(
     Json(bets)
 }
 
-#[post("/say", format = "text/plain", data = "<message>")]
-pub async fn say(message: Message, state: &rocket::State<BotState>) {
-    if let Err(err) = state
-        .client
-        .lock()
-        .await
-        .send(Command::PRIVMSG(message.channel, message.body))
-    {
+#[post("/say", format = "application/json", data = "<message>")]
+pub async fn say(message: Json<Message>, state: &rocket::State<BotState>) {
+    if let Err(err) = state.client.lock().await.send(Command::PRIVMSG(
+        message.channel.clone(),
+        message.body.clone(),
+    )) {
         eprintln!("{err}");
     }
 }
