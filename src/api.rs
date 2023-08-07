@@ -2,10 +2,41 @@ use crate::database::{CsvRecord, Database};
 use chrono::{DateTime, Utc};
 use irc::client::prelude::Command;
 use irc::client::Client;
+use rocket::http::Status;
+use rocket::request::{FromRequest, Outcome, Request};
 use rocket::serde::json::Json;
+use rocket::State;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
+async fn validate_api_key(key: &str) -> bool {
+    match tokio::fs::read_to_string("api_keys.txt").await {
+        Ok(keys) => keys.contains(key),
+        Err(_) => false,
+    }
+}
+
+#[derive(Debug)]
+pub enum ApiKeyError {
+    Invalid,
+    Missing,
+}
+
+pub struct ApiKey(String);
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for ApiKey {
+    type Error = ApiKeyError;
+
+    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
+        match request.headers().get_one("x-api-key") {
+            Some(key) if validate_api_key(key).await => Outcome::Success(ApiKey(key.to_string())),
+            Some(_) => Outcome::Failure((Status::Unauthorized, ApiKeyError::Invalid)),
+            None => Outcome::Failure((Status::Unauthorized, ApiKeyError::Missing)),
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct Message {
@@ -180,11 +211,13 @@ pub async fn f1bets(
 }
 
 #[post("/say", format = "application/json", data = "<message>")]
-pub async fn say(message: Json<Message>, state: &rocket::State<BotState>) {
+pub async fn say(message: Json<Message>, _key: ApiKey, state: &State<BotState>) -> &'static str {
     if let Err(err) = state.client.lock().await.send(Command::PRIVMSG(
         message.channel.clone(),
         message.body.clone(),
     )) {
         eprintln!("{err}");
     }
+
+    "Success"
 }
