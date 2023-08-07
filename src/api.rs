@@ -79,7 +79,7 @@ impl CsvRecord for Bet {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct Event {
     category: String,
@@ -218,6 +218,13 @@ pub async fn say(message: Json<Message>, _key: ApiKey, state: &State<BotState>) 
     )) {
         eprintln!("{err}");
     }
+
+    "Success"
+}
+
+#[post("/addevent", format = "application/json", data = "<event>")]
+pub async fn addevent(event: Json<Event>, state: &State<BotState>) -> &'static str {
+    println!("{:?}", event);
 
     "Success"
 }

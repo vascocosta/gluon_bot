@@ -90,7 +90,10 @@ async fn main() {
         };
 
         let _rocket = rocket::build()
-            .mount("/api", routes![api::f1bets, api::events, api::say])
+            .mount(
+                "/api",
+                routes![api::f1bets, api::events, api::say, api::addevent],
+            )
             .manage(my_state)
             .launch()
             .await
