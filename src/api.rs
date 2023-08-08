@@ -224,7 +224,19 @@ pub async fn say(message: Json<Message>, _key: ApiKey, state: &State<BotState>) 
 
 #[post("/events/add", format = "application/json", data = "<event>")]
 pub async fn addevent(event: Json<Event>, _key: ApiKey, state: &State<BotState>) -> &'static str {
-    println!("{:?}", event);
+    let event = Event {
+        category: event.category.clone(),
+        name: event.name.clone(),
+        description: event.description.clone(),
+        datetime: event.datetime,
+        channel: event.channel.clone(),
+        tags: event.tags.clone(),
+        notify: event.notify,
+    };
+
+    if state.db.lock().await.insert("events", event).is_err() {
+        return "Failure";
+    }
 
     "Success"
 }
