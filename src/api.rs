@@ -212,11 +212,17 @@ pub async fn f1_bets(
 
 #[post("/say", format = "application/json", data = "<message>")]
 pub async fn say(message: Json<Message>, _key: ApiKey, state: &State<BotState>) -> &'static str {
-    if let Err(err) = state.client.lock().await.send(Command::PRIVMSG(
-        message.channel.clone(),
-        message.body.clone(),
-    )) {
-        eprintln!("{err}");
+    if state
+        .client
+        .lock()
+        .await
+        .send(Command::PRIVMSG(
+            message.channel.clone(),
+            message.body.clone(),
+        ))
+        .is_err()
+    {
+        return "Failure";
     }
 
     "Success"
