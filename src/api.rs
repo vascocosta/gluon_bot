@@ -185,7 +185,7 @@ pub async fn events(
 }
 
 #[get("/f1bets?<race>&<nick>")]
-pub async fn f1bets(
+pub async fn f1_bets(
     race: Option<&str>,
     nick: Option<&str>,
     state: &rocket::State<BotState>,
@@ -223,7 +223,7 @@ pub async fn say(message: Json<Message>, _key: ApiKey, state: &State<BotState>) 
 }
 
 #[post("/events/add", format = "application/json", data = "<event>")]
-pub async fn addevent(event: Json<Event>, _key: ApiKey, state: &State<BotState>) -> &'static str {
+pub async fn add_event(event: Json<Event>, _key: ApiKey, state: &State<BotState>) -> &'static str {
     let event = Event {
         category: event.category.clone(),
         name: event.name.clone(),
