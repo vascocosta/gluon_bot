@@ -8,6 +8,7 @@ use commands::BotCommand;
 use database::Database;
 use futures::prelude::*;
 use irc::client::prelude::*;
+use rocket::fs::FileServer;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
@@ -92,8 +93,9 @@ async fn main() {
         let _rocket = rocket::build()
             .mount(
                 "/api",
-                routes![api::f1bets, api::events, api::say, api::addevent],
+                routes![api::f1bets, api::events, api::say, api::addevent,],
             )
+            .mount("/", FileServer::from("static/"))
             .manage(my_state)
             .launch()
             .await

@@ -222,7 +222,7 @@ pub async fn say(message: Json<Message>, _key: ApiKey, state: &State<BotState>) 
     "Success"
 }
 
-#[post("/addevent", format = "application/json", data = "<event>")]
+#[post("/events/add", format = "application/json", data = "<event>")]
 pub async fn addevent(event: Json<Event>, _key: ApiKey, state: &State<BotState>) -> &'static str {
     println!("{:?}", event);
 
