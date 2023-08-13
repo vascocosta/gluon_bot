@@ -95,14 +95,6 @@ async fn main() {
                 "/api",
                 routes![api::f1_bets, api::events, api::say, api::add_event,],
             )
-            .attach(|| {
-                let allowed_origins = AllowedOrigins::all();
-                let options = CorsOptions {
-                    allowed_origins,
-                    ..Default::default()
-                };
-                rocket_cors::Cors::from_options(options).expect("Failed to create CORS middleware")
-            })
             .mount("/", FileServer::from("static/"))
             .manage(my_state)
             .launch()
