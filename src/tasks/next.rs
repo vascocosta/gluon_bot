@@ -32,7 +32,7 @@ impl CsvRecord for Event {
             },
             channel: fields[4].clone(),
             tags: fields[5].clone(),
-            notify: fields[6].parse().unwrap_or(false),
+            notify: fields[6].parse().unwrap_or_default(),
         }
     }
 
