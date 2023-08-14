@@ -10,11 +10,17 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+const MIN_KEY_SIZE: usize = 32;
+
 async fn validate_api_key(key: &str) -> bool {
-    match tokio::fs::read_to_string("api_keys.txt").await {
-        Ok(keys) => keys.contains(key),
-        Err(_) => false,
-    }
+    let keys = match tokio::fs::read_to_string("api_keys.txt").await {
+        Ok(keys) => keys,
+        Err(_) => return false,
+    };
+
+    keys.lines().any(|line| {
+        line.len() >= MIN_KEY_SIZE && !line.is_empty() && !line.contains(' ') && line == key
+    })
 }
 
 #[derive(Debug)]
