@@ -190,6 +190,25 @@ pub async fn events(
     Json(events)
 }
 
+#[post("/events/add", format = "application/json", data = "<event>")]
+pub async fn add_event(event: Json<Event>, _key: ApiKey, state: &State<BotState>) -> &'static str {
+    let event = Event {
+        category: event.category.clone(),
+        name: event.name.clone(),
+        description: event.description.clone(),
+        datetime: event.datetime,
+        channel: event.channel.clone(),
+        tags: event.tags.clone(),
+        notify: event.notify,
+    };
+
+    if state.db.lock().await.insert("events", event).is_err() {
+        return "Failure";
+    }
+
+    "Success"
+}
+
 #[get("/f1bets?<race>&<nick>")]
 pub async fn f1_bets(
     race: Option<&str>,
@@ -228,25 +247,6 @@ pub async fn say(message: Json<Message>, _key: ApiKey, state: &State<BotState>) 
         ))
         .is_err()
     {
-        return "Failure";
-    }
-
-    "Success"
-}
-
-#[post("/events/add", format = "application/json", data = "<event>")]
-pub async fn add_event(event: Json<Event>, _key: ApiKey, state: &State<BotState>) -> &'static str {
-    let event = Event {
-        category: event.category.clone(),
-        name: event.name.clone(),
-        description: event.description.clone(),
-        datetime: event.datetime,
-        channel: event.channel.clone(),
-        tags: event.tags.clone(),
-        notify: event.notify,
-    };
-
-    if state.db.lock().await.insert("events", event).is_err() {
         return "Failure";
     }
 
