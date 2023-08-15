@@ -162,11 +162,14 @@ fn lookup_race(race: &str) -> String {
     result.to_lowercase()
 }
 
-#[get("/events?<category>&<name>&<description>")]
+#[get("/events?<category>&<name>&<description>&<datetime>&<channel>&<tags>")]
 pub async fn events(
     category: Option<&str>,
     name: Option<&str>,
     description: Option<&str>,
+    datetime: Option<&str>,
+    channel: Option<&str>,
+    tags: Option<&str>,
     state: &rocket::State<BotState>,
 ) -> Json<Vec<Event>> {
     let events = state
@@ -183,6 +186,16 @@ pub async fn events(
                 && e.description
                     .to_lowercase()
                     .contains(description.unwrap_or_default().to_lowercase().as_str())
+                && e.datetime
+                    .to_string()
+                    .to_lowercase()
+                    .contains(datetime.unwrap_or_default().to_lowercase().as_str())
+                && e.channel
+                    .to_lowercase()
+                    .contains(channel.unwrap_or_default().to_lowercase().as_str())
+                && e.tags
+                    .to_lowercase()
+                    .contains(tags.unwrap_or_default().to_lowercase().as_str())
         })
         .unwrap_or_default()
         .unwrap_or_default();
