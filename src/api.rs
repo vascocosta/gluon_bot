@@ -1,6 +1,5 @@
 use crate::database::{CsvRecord, Database};
 use chrono::{DateTime, Utc};
-use futures::AsyncReadExt;
 use irc::client::prelude::Command;
 use irc::client::Client;
 use rocket::http::Status;
