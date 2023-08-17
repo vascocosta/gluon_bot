@@ -2,6 +2,7 @@ use crate::database::{CsvRecord, Database};
 use chrono::{DateTime, Utc};
 use irc::client::prelude::Command;
 use irc::client::Client;
+use itertools::Itertools;
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome, Request};
 use rocket::serde::json::Json;
@@ -200,7 +201,12 @@ pub async fn events(
         .unwrap_or_default()
         .unwrap_or_default();
 
-    Json(events)
+    Json(
+        events
+            .into_iter()
+            .sorted_by(|a, b| Ord::cmp(&b.datetime, &a.datetime))
+            .collect(),
+    )
 }
 
 #[post("/events/add", format = "application/json", data = "<event>")]
