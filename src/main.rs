@@ -93,7 +93,13 @@ async fn main() {
         let _rocket = rocket::build()
             .mount(
                 "/api",
-                routes![api::f1_bets, api::events, api::say, api::add_event,],
+                routes![
+                    api::f1_bets,
+                    api::events,
+                    api::say,
+                    api::add_event,
+                    api::delete_event
+                ],
             )
             .mount("/", FileServer::from("static/"))
             .manage(my_state)

@@ -1,5 +1,6 @@
 use crate::database::{CsvRecord, Database};
 use chrono::{DateTime, Utc};
+use futures::AsyncReadExt;
 use irc::client::prelude::Command;
 use irc::client::Client;
 use rocket::http::Status;
@@ -85,7 +86,7 @@ impl CsvRecord for Bet {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct Event {
     category: String,
@@ -216,6 +217,30 @@ pub async fn add_event(event: Json<Event>, _key: ApiKey, state: &State<BotState>
     };
 
     if state.db.lock().await.insert("events", event).is_err() {
+        return "Failure";
+    }
+
+    "Success"
+}
+
+#[post("/events/delete", format = "application/json", data = "<event>")]
+pub async fn delete_event(
+    event: Json<Event>,
+    _key: ApiKey,
+    state: &State<BotState>,
+) -> &'static str {
+    if state
+        .db
+        .lock()
+        .await
+        .delete("events", |e: &&Event| {
+            e.category.to_lowercase() == event.category.to_lowercase()
+                && e.name.to_lowercase() == event.name.to_lowercase()
+                && e.description.to_lowercase() == event.description.to_lowercase()
+                && e.datetime == event.datetime
+        })
+        .is_err()
+    {
         return "Failure";
     }
 
