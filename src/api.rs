@@ -163,7 +163,7 @@ fn lookup_race(race: &str) -> String {
     result.to_lowercase()
 }
 
-#[get("/events?<category>&<name>&<description>&<datetime>&<channel>&<tags>")]
+#[get("/events?<category>&<name>&<description>&<datetime>&<channel>&<tags>&<orderby>&<descending>")]
 pub async fn events(
     category: Option<&str>,
     name: Option<&str>,
@@ -171,6 +171,8 @@ pub async fn events(
     datetime: Option<&str>,
     channel: Option<&str>,
     tags: Option<&str>,
+    orderby: Option<&str>,
+    descending: Option<bool>,
     state: &rocket::State<BotState>,
 ) -> Json<Vec<Event>> {
     let events = state
@@ -201,12 +203,26 @@ pub async fn events(
         .unwrap_or_default()
         .unwrap_or_default();
 
-    Json(
-        events
-            .into_iter()
-            .sorted_by(|a, b| Ord::cmp(&b.datetime, &a.datetime))
-            .collect(),
-    )
+    let ordering = match orderby.unwrap_or_default().to_lowercase().as_str() {
+        "category" => match descending.unwrap_or_default() {
+            false => |a: &Event, b: &Event| Ord::cmp(&a.category, &b.category),
+            true => |a: &Event, b: &Event| Ord::cmp(&b.category, &a.category),
+        },
+        "name" => match descending.unwrap_or_default() {
+            false => |a: &Event, b: &Event| Ord::cmp(&a.name, &b.name),
+            true => |a: &Event, b: &Event| Ord::cmp(&b.name, &a.name),
+        },
+        "description" => match descending.unwrap_or_default() {
+            false => |a: &Event, b: &Event| Ord::cmp(&a.description, &b.description),
+            true => |a: &Event, b: &Event| Ord::cmp(&b.description, &a.description),
+        },
+        _ => match descending.unwrap_or_default() {
+            false => |a: &Event, b: &Event| Ord::cmp(&a.datetime, &b.datetime),
+            true => |a: &Event, b: &Event| Ord::cmp(&b.datetime, &a.datetime),
+        },
+    };
+
+    Json(events.into_iter().sorted_by(ordering).collect())
 }
 
 #[post("/events/add", format = "application/json", data = "<event>")]
