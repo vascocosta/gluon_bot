@@ -338,6 +338,29 @@ pub async fn add_quote(quote: Json<Quote>, _key: ApiKey, state: &State<BotState>
     "Success"
 }
 
+#[post("/quotes/delete", format = "application/json", data = "<quote>")]
+pub async fn delete_quote(
+    quote: Json<Quote>,
+    _key: ApiKey,
+    state: &State<BotState>,
+) -> &'static str {
+    if state
+        .db
+        .lock()
+        .await
+        .delete("quotes", |q: &&Quote| {
+            q.date.to_lowercase() == quote.date.to_lowercase()
+                && q.text.to_lowercase() == quote.text.to_lowercase()
+                && q.channel.to_lowercase() == quote.channel.to_lowercase()
+        })
+        .is_err()
+    {
+        return "Failure";
+    }
+
+    "Success"
+}
+
 #[post("/say", format = "application/json", data = "<message>")]
 pub async fn say(message: Json<Message>, _key: ApiKey, state: &State<BotState>) -> &'static str {
     if state

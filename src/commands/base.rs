@@ -26,7 +26,7 @@ impl CsvRecord for Answer {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(PartialEq, Serialize, Deserialize)]
 pub struct Quote {
     pub date: String,
     pub text: String,

@@ -97,6 +97,7 @@ async fn main() {
                     api::add_event,
                     api::add_quote,
                     api::delete_event,
+                    api::delete_quote,
                     api::events,
                     api::f1_bets,
                     api::quotes,
