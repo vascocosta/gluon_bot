@@ -323,6 +323,21 @@ pub async fn quotes(
     Json(quotes)
 }
 
+#[post("/quotes/add", format = "application/json", data = "<quote>")]
+pub async fn add_quote(quote: Json<Quote>, _key: ApiKey, state: &State<BotState>) -> &'static str {
+    let quote = Quote {
+        date: quote.date.clone(),
+        text: quote.text.clone(),
+        channel: quote.channel.clone(),
+    };
+
+    if state.db.lock().await.insert("quotes", quote).is_err() {
+        return "Failure";
+    }
+
+    "Success"
+}
+
 #[post("/say", format = "application/json", data = "<message>")]
 pub async fn say(message: Json<Message>, _key: ApiKey, state: &State<BotState>) -> &'static str {
     if state

@@ -95,6 +95,7 @@ async fn main() {
                 "/api",
                 routes![
                     api::add_event,
+                    api::add_quote,
                     api::delete_event,
                     api::events,
                     api::f1_bets,
