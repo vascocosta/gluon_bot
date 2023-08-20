@@ -6,7 +6,6 @@ use irc::client::Client;
 use itertools::Itertools;
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome, Request};
-use rocket::response::Redirect;
 use rocket::serde::json::Json;
 use rocket::State;
 use serde::{Deserialize, Serialize};
@@ -378,14 +377,4 @@ pub async fn say(message: Json<Message>, _key: ApiKey, state: &State<BotState>) 
     }
 
     "Success"
-}
-
-#[get("/events")]
-pub fn redirect_events() -> Redirect {
-    Redirect::to(uri!("/index.html"))
-}
-
-#[get("/quotes")]
-pub fn redirect_quotes() -> Redirect {
-    Redirect::to(uri!("/index.html"))
 }

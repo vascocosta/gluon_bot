@@ -9,6 +9,9 @@ use database::Database;
 use futures::prelude::*;
 use irc::client::prelude::*;
 use rocket::fs::FileServer;
+use rocket::fs::NamedFile;
+use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
@@ -17,6 +20,11 @@ use tokio::time;
 
 #[macro_use]
 extern crate rocket;
+
+#[get("/<path..>", rank = 2)]
+async fn all(path: PathBuf) -> Option<NamedFile> {
+    NamedFile::open(Path::new("static/index.html")).await.ok()
+}
 
 #[tokio::main]
 async fn main() {
@@ -104,7 +112,7 @@ async fn main() {
                     api::say,
                 ],
             )
-            .mount("/", routes![api::redirect_events, api::redirect_quotes])
+            .mount("/", routes![all])
             .mount("/", FileServer::from("static/"))
             .manage(my_state)
             .launch()
