@@ -9,6 +9,7 @@ use database::Database;
 use futures::prelude::*;
 use irc::client::prelude::*;
 use rocket::fs::FileServer;
+use rocket::response::Redirect;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
@@ -102,6 +103,8 @@ async fn main() {
                     api::f1_bets,
                     api::quotes,
                     api::say,
+                    api::redirect_events,
+                    api::redirect_quotes,
                 ],
             )
             .mount("/", FileServer::from("static/"))
