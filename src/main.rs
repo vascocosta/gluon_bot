@@ -103,10 +103,9 @@ async fn main() {
                     api::f1_bets,
                     api::quotes,
                     api::say,
-                    api::redirect_events,
-                    api::redirect_quotes,
                 ],
             )
+            .mount("/", routes![api::redirect_events, api::redirect_quotes])
             .mount("/", FileServer::from("static/"))
             .manage(my_state)
             .launch()
