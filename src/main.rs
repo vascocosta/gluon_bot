@@ -9,7 +9,6 @@ use database::Database;
 use futures::prelude::*;
 use irc::client::prelude::*;
 use rocket::fs::FileServer;
-use rocket::response::Redirect;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
