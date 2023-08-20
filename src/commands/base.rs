@@ -4,6 +4,7 @@ use chrono_tz::Tz;
 use irc::client::prelude::Command;
 use irc::client::Client;
 use rand::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
@@ -25,10 +26,11 @@ impl CsvRecord for Answer {
     }
 }
 
-struct Quote {
-    date: String,
-    text: String,
-    channel: String,
+#[derive(Serialize, Deserialize)]
+pub struct Quote {
+    pub date: String,
+    pub text: String,
+    pub channel: String,
 }
 
 impl CsvRecord for Quote {

@@ -1,4 +1,4 @@
-mod base;
+pub mod base;
 mod city;
 mod f1bet;
 mod f1results;

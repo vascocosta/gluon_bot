@@ -94,11 +94,12 @@ async fn main() {
             .mount(
                 "/api",
                 routes![
-                    api::f1_bets,
-                    api::events,
-                    api::say,
                     api::add_event,
-                    api::delete_event
+                    api::delete_event,
+                    api::events,
+                    api::f1_bets,
+                    api::quotes,
+                    api::say,
                 ],
             )
             .mount("/", FileServer::from("static/"))

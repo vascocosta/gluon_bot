@@ -1,3 +1,4 @@
+use crate::commands::base::Quote;
 use crate::database::{CsvRecord, Database};
 use chrono::{DateTime, Utc};
 use irc::client::prelude::Command;
@@ -292,6 +293,34 @@ pub async fn f1_bets(
         .unwrap_or_default();
 
     Json(bets)
+}
+
+#[get("/quotes?<date>&<text>&<channel>")]
+pub async fn quotes(
+    date: Option<&str>,
+    text: Option<&str>,
+    channel: Option<&str>,
+    state: &State<BotState>,
+) -> Json<Vec<Quote>> {
+    let quotes = state
+        .db
+        .lock()
+        .await
+        .select("quotes", |q: &Quote| {
+            q.date
+                .to_lowercase()
+                .contains(date.unwrap_or_default().to_lowercase().as_str())
+                && q.text
+                    .to_lowercase()
+                    .contains(text.unwrap_or_default().to_lowercase().as_str())
+                && q.channel
+                    .to_lowercase()
+                    .contains(channel.unwrap_or_default().to_lowercase().as_str())
+        })
+        .unwrap_or_default()
+        .unwrap_or_default();
+
+    Json(quotes)
 }
 
 #[post("/say", format = "application/json", data = "<message>")]
