@@ -21,8 +21,8 @@ use tokio::time;
 #[macro_use]
 extern crate rocket;
 
-#[get("/<path..>", rank = 2)]
-async fn all(path: PathBuf) -> Option<NamedFile> {
+#[get("/<_path..>", rank = 2)]
+async fn all(_path: PathBuf) -> Option<NamedFile> {
     NamedFile::open(Path::new("static/index.html")).await.ok()
 }
 
@@ -112,8 +112,8 @@ async fn main() {
                     api::say,
                 ],
             )
+            .mount("/", FileServer::from("static/").rank(1))
             .mount("/", routes![all])
-            .mount("/", FileServer::from("static/"))
             .manage(my_state)
             .launch()
             .await
