@@ -108,6 +108,7 @@ async fn main() {
                     api::delete_quote,
                     api::events,
                     api::f1_bets,
+                    api::score_f1_bets,
                     api::quotes,
                     api::say,
                 ],

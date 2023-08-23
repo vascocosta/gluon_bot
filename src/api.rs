@@ -1,5 +1,5 @@
 use crate::commands::base::Quote;
-use crate::commands::f1bet::Bet;
+use crate::commands::f1bet::{score_bets, Bet, ScoringSystem};
 use crate::commands::next::Event;
 use crate::database::Database;
 use irc::client::prelude::Command;
@@ -10,6 +10,7 @@ use rocket::request::{FromRequest, Outcome, Request};
 use rocket::serde::json::Json;
 use rocket::State;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -51,6 +52,12 @@ impl<'r> FromRequest<'r> for ApiKey {
 pub struct Message {
     channel: String,
     body: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct F1BetScore {
+    nick: String,
+    points: i32,
 }
 
 pub struct BotState {
@@ -219,6 +226,37 @@ pub async fn f1_bets(
         .unwrap_or_default();
 
     Json(bets)
+}
+
+#[get("/f1bets/scores")]
+pub async fn score_f1_bets(state: &State<BotState>) -> Json<Vec<F1BetScore>> {
+    let bets = state
+        .db
+        .lock()
+        .await
+        .select("bets", |_: &Bet| true)
+        .unwrap_or_default()
+        .unwrap_or_default();
+
+    let results = state
+        .db
+        .lock()
+        .await
+        .select("results", |_: &Bet| true)
+        .unwrap_or_default()
+        .unwrap_or_default();
+
+    let scored_bets = score_bets(bets, results, ScoringSystem::from_options(&HashMap::new()));
+
+    Json(
+        scored_bets
+            .into_iter()
+            .map(|bet: (String, i32)| F1BetScore {
+                nick: bet.0,
+                points: bet.1,
+            })
+            .collect(),
+    )
 }
 
 #[get("/quotes?<date>&<text>&<channel>")]

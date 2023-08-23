@@ -63,7 +63,7 @@ impl CsvRecord for Event {
     }
 }
 
-struct ScoringSystem {
+pub struct ScoringSystem {
     boost: i32,
     correct: i32,
     fl: i32,
@@ -71,7 +71,7 @@ struct ScoringSystem {
 }
 
 impl ScoringSystem {
-    fn from_options(options: &HashMap<String, String>) -> Self {
+    pub fn from_options(options: &HashMap<String, String>) -> Self {
         ScoringSystem {
             boost: match options.get("f1bet_boost") {
                 Some(boost) => boost.parse().unwrap_or(10),
@@ -252,7 +252,7 @@ fn bets_log(
     }
 }
 
-fn score_bets(
+pub fn score_bets(
     bets: Vec<Bet>,
     results: Vec<Bet>,
     scoring_system: ScoringSystem,
