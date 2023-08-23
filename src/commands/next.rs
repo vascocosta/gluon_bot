@@ -2,17 +2,19 @@ use crate::database::{CsvRecord, Database};
 use crate::tasks::next::Notification;
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-struct Event {
-    category: String,
-    name: String,
-    description: String,
-    datetime: DateTime<Utc>,
-    channel: String,
-    tags: String,
-    notify: bool,
+#[derive(PartialEq, Serialize, Deserialize)]
+pub struct Event {
+    pub category: String,
+    pub name: String,
+    pub description: String,
+    pub datetime: DateTime<Utc>,
+    pub channel: String,
+    pub tags: String,
+    pub notify: bool,
 }
 
 impl CsvRecord for Event {

@@ -1,11 +1,11 @@
 pub mod base;
 mod city;
-mod f1bet;
+pub mod f1bet;
 mod f1results;
 mod f1standings;
 mod first;
 mod news;
-mod next;
+pub mod next;
 mod omdb;
 mod plugin;
 mod rates;

@@ -1,6 +1,7 @@
 use crate::commands::base::Quote;
-use crate::database::{CsvRecord, Database};
-use chrono::{DateTime, Utc};
+use crate::commands::f1bet::Bet;
+use crate::commands::next::Event;
+use crate::database::Database;
 use irc::client::prelude::Command;
 use irc::client::Client;
 use itertools::Itertools;
@@ -52,82 +53,6 @@ pub struct Message {
     body: String,
 }
 
-#[derive(Serialize)]
-#[serde(crate = "rocket::serde")]
-pub struct Bet {
-    race: String,
-    nick: String,
-    p1: String,
-    p2: String,
-    p3: String,
-    fl: String,
-}
-
-impl CsvRecord for Bet {
-    fn from_fields(fields: &[String]) -> Self {
-        Self {
-            race: fields[0].clone(),
-            nick: fields[1].clone(),
-            p1: fields[2].clone(),
-            p2: fields[3].clone(),
-            p3: fields[4].clone(),
-            fl: fields[5].clone(),
-        }
-    }
-
-    fn to_fields(&self) -> Vec<String> {
-        vec![
-            self.race.clone(),
-            self.nick.clone(),
-            self.p1.clone(),
-            self.p2.clone(),
-            self.p3.clone(),
-            self.fl.clone(),
-        ]
-    }
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-#[serde(crate = "rocket::serde")]
-pub struct Event {
-    category: String,
-    name: String,
-    description: String,
-    datetime: DateTime<Utc>,
-    channel: String,
-    tags: String,
-    notify: bool,
-}
-
-impl CsvRecord for Event {
-    fn from_fields(fields: &[String]) -> Self {
-        Self {
-            category: fields[0].clone(),
-            name: fields[1].clone(),
-            description: fields[2].clone(),
-            datetime: match fields[3].parse() {
-                Ok(datetime) => datetime,
-                Err(_) => Utc::now(),
-            },
-            channel: fields[4].clone(),
-            tags: fields[5].clone(),
-            notify: fields[6].parse().unwrap_or_default(),
-        }
-    }
-
-    fn to_fields(&self) -> Vec<String> {
-        vec![
-            self.category.clone(),
-            self.name.clone(),
-            self.description.clone(),
-            self.datetime.to_string(),
-            self.channel.clone(),
-            self.tags.clone(),
-            self.notify.to_string(),
-        ]
-    }
-}
-
 pub struct BotState {
     pub client: Arc<Mutex<Client>>,
     pub db: Arc<Mutex<Database>>,
@@ -164,6 +89,7 @@ fn lookup_race(race: &str) -> String {
     result.to_lowercase()
 }
 
+#[allow(clippy::too_many_arguments)]
 #[get("/events?<category>&<name>&<description>&<datetime>&<channel>&<tags>&<orderby>&<descending>")]
 pub async fn events(
     category: Option<&str>,

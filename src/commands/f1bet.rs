@@ -1,6 +1,7 @@
 use crate::database::{CsvRecord, Database};
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -92,14 +93,14 @@ impl ScoringSystem {
     }
 }
 
-#[derive(PartialEq)]
-struct Bet {
-    race: String,
-    nick: String,
-    p1: String,
-    p2: String,
-    p3: String,
-    fl: String,
+#[derive(PartialEq, Deserialize, Serialize)]
+pub struct Bet {
+    pub race: String,
+    pub nick: String,
+    pub p1: String,
+    pub p2: String,
+    pub p3: String,
+    pub fl: String,
 }
 
 impl CsvRecord for Bet {
