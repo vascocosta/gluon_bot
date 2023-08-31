@@ -325,6 +325,46 @@ pub async fn delete_quote(
     "Success"
 }
 
+#[post("/quotes/update", format = "application/json", data = "<input>")]
+pub async fn update_quote(
+    input: Json<Vec<Quote>>,
+    _key: ApiKey,
+    state: &State<BotState>,
+) -> &'static str {
+    let new_quote = match input.get(1) {
+        Some(new_quote) => new_quote.clone(),
+        None => return "Failure",
+    };
+    let search_quote = match input.get(0) {
+        Some(search_quote) => search_quote,
+        None => return "Failure",
+    };
+
+    if state
+        .db
+        .lock()
+        .await
+        .update(
+            "quotes",
+            Quote {
+                date: new_quote.date.clone(),
+                text: new_quote.text.clone(),
+                channel: new_quote.channel.clone(),
+            },
+            |q: &&Quote| {
+                q.date.to_lowercase() == search_quote.date.to_lowercase()
+                    && q.text.to_lowercase() == search_quote.text.to_lowercase()
+                    && q.channel.to_lowercase() == search_quote.channel.to_lowercase()
+            },
+        )
+        .is_err()
+    {
+        return "Failure";
+    }
+
+    "Success"
+}
+
 #[post("/say", format = "application/json", data = "<message>")]
 pub async fn say(message: Json<Message>, _key: ApiKey, state: &State<BotState>) -> &'static str {
     if state
