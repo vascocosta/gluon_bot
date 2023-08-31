@@ -111,6 +111,7 @@ async fn main() {
                     api::quotes,
                     api::say,
                     api::score_f1_bets,
+                    api::update_event,
                     api::update_quote,
                 ],
             )

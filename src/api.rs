@@ -202,6 +202,53 @@ pub async fn delete_event(
     "Success"
 }
 
+#[post("/events/update", format = "application/json", data = "<input>")]
+pub async fn update_event(
+    input: Json<Vec<Event>>,
+    _key: ApiKey,
+    state: &State<BotState>,
+) -> &'static str {
+    let new_event = match input.get(1) {
+        Some(new_event) => new_event.clone(),
+        None => return "Failure",
+    };
+    let search_event = match input.get(0) {
+        Some(search_event) => search_event,
+        None => return "Failure",
+    };
+
+    if state
+        .db
+        .lock()
+        .await
+        .update(
+            "events",
+            Event {
+                category: new_event.category.clone(),
+                name: new_event.name.clone(),
+                description: new_event.description.clone(),
+                datetime: new_event.datetime,
+                channel: new_event.channel.clone(),
+                tags: new_event.tags.clone(),
+                notify: new_event.notify,
+            },
+            |e: &&Event| {
+                e.category.to_lowercase() == search_event.category.to_lowercase()
+                    && e.name.to_lowercase() == search_event.name.to_lowercase()
+                    && e.description.to_lowercase() == search_event.description.to_lowercase()
+                    && e.datetime == search_event.datetime
+                    && e.channel.to_lowercase() == search_event.channel.to_lowercase()
+                    && e.tags.to_lowercase() == search_event.tags.to_lowercase()
+            },
+        )
+        .is_err()
+    {
+        return "Failure";
+    }
+
+    "Success"
+}
+
 #[get("/f1bets?<race>&<nick>")]
 pub async fn f1_bets(
     race: Option<&str>,
