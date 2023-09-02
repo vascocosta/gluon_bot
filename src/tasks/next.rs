@@ -3,6 +3,7 @@ use chrono::{DateTime, Utc};
 use circular_queue::CircularQueue;
 use irc::client::prelude::Command;
 use irc::client::Client;
+use itertools::Itertools;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -86,7 +87,10 @@ pub async fn next(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>) {
                 && e.datetime.signed_duration_since(Utc::now()).num_seconds() > 240
         }) {
             Ok(events) => match events {
-                Some(events) => events,
+                Some(events) => events
+                    .into_iter()
+                    .sorted_by(|a, b| a.datetime.cmp(&b.datetime))
+                    .collect(),
                 None => continue,
             },
             Err(_) => {
