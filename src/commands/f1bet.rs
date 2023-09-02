@@ -160,7 +160,10 @@ async fn next_race(target: &str, db: Arc<Mutex<Database>>) -> Option<Event> {
             && e.description.eq_ignore_ascii_case("race")
     }) {
         Ok(events_result) => match events_result {
-            Some(events) => events.into_iter().next(),
+            Some(events) => events
+                .into_iter()
+                .sorted_by(|a, b| a.datetime.cmp(&b.datetime))
+                .next(),
             None => None,
         },
         Err(_) => None,
