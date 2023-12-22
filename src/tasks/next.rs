@@ -9,6 +9,7 @@ use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
+use tokio_util::sync::CancellationToken;
 
 #[derive(Hash, PartialEq)]
 struct Event {
@@ -76,10 +77,10 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
     s.finish()
 }
 
-pub async fn next(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>) {
+pub async fn next(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>, token: CancellationToken) {
     let mut hashes = CircularQueue::with_capacity(10);
 
-    loop {
+    while !token.is_cancelled() {
         sleep(Duration::from_secs(30)).await;
 
         let events: Vec<Event> = match db.lock().await.select("events", |e: &Event| {

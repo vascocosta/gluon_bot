@@ -9,9 +9,10 @@ use tokio::{
     fs::{File, OpenOptions},
     io::BufReader,
 };
+use tokio_util::sync::CancellationToken;
 
-pub async fn external_message(client: Arc<Mutex<Client>>) {
-    loop {
+pub async fn external_message(client: Arc<Mutex<Client>>, token: CancellationToken) {
+    while !token.is_cancelled() {
         let file = match OpenOptions::new()
             .read(true)
             .write(true)
@@ -39,7 +40,7 @@ pub async fn external_message(client: Arc<Mutex<Client>>) {
 
         let mut reader = BufReader::new(file);
 
-        loop {
+        while !token.is_cancelled() {
             let mut line = String::new();
 
             match reader.read_line(&mut line).await {

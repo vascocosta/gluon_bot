@@ -17,6 +17,7 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::task;
 use tokio::time;
+use tokio_util::sync::CancellationToken;
 
 #[macro_use]
 extern crate rocket;
@@ -28,29 +29,14 @@ async fn all(_path: PathBuf) -> Option<NamedFile> {
 
 #[tokio::main]
 async fn main() {
-    // Variables that run exclusively on the main task/thread are declared like regular variables.
-    // Variables whose immutable/mutable reference is shared among tasks/threads use an Arc/Mutex.
-    let config = match Config::load("config.toml") {
-        Ok(config) => config,
-        Err(error) => match error {
-            irc::error::Error::Io(_) => {
-                eprintln!("Could not read configuration file (config.toml).");
-
-                return;
-            }
-            _ => {
-                eprintln!("Unknown error parsing configuration file.");
-
-                return;
-            }
-        },
-    };
-    let client = Arc::new(Mutex::new(
-        match Client::from_config(config.clone()).await {
-            Ok(client) => client,
+    loop {
+        // Variables that run exclusively on the main task/thread are declared like regular variables.
+        // Variables whose immutable/mutable reference is shared among tasks/threads use an Arc/Mutex.
+        let config = match Config::load("config.toml") {
+            Ok(config) => config,
             Err(error) => match error {
-                irc::error::Error::InvalidConfig { path, cause } => {
-                    eprintln!("Invalid configuration file ({path}). Cause: {cause}.");
+                irc::error::Error::Io(_) => {
+                    eprintln!("Could not read configuration file (config.toml).");
 
                     return;
                 }
@@ -60,134 +46,208 @@ async fn main() {
                     return;
                 }
             },
-        },
-    ));
-    let options = Arc::new(config.options);
-    let prefix = match options.get("prefix") {
-        Some(prefix) => prefix,
-        None => "!",
-    };
-    let db = Arc::new(Mutex::new(Database::new(
-        match options.get("database_path") {
-            Some(path) => path,
-            None => "data/",
-        },
-        None,
-    )));
+        };
+        let client = Arc::new(Mutex::new(
+            match Client::from_config(config.clone()).await {
+                Ok(client) => client,
+                Err(error) => match error {
+                    irc::error::Error::InvalidConfig { path, cause } => {
+                        eprintln!("Invalid configuration file ({path}). Cause: {cause}.");
 
-    let mut stream = match client.lock().await.stream() {
-        Ok(stream) => stream,
-        Err(error) => {
+                        return;
+                    }
+                    _ => {
+                        eprintln!("Unknown error parsing configuration file.");
+
+                        return;
+                    }
+                },
+            },
+        ));
+        let options = Arc::new(config.options);
+        let prefix = match options.get("prefix") {
+            Some(prefix) => prefix,
+            None => "!",
+        };
+        let db = Arc::new(Mutex::new(Database::new(
+            match options.get("database_path") {
+                Some(path) => path,
+                None => "data/",
+            },
+            None,
+        )));
+        let mut stream = match client.lock().await.stream() {
+            Ok(stream) => stream,
+            Err(error) => {
+                eprintln!("{error}");
+
+                return;
+            }
+        };
+
+        if let Err(error) = client.lock().await.identify() {
             eprintln!("{error}");
+        }
+
+        println!("Connected to the IRC server.");
+
+        // Spawn the API task.
+        let client_clone = Arc::clone(&client);
+        let db_clone = Arc::clone(&db);
+        let api_token = CancellationToken::new();
+        task::spawn(async move {
+            let my_state = api::BotState {
+                client: client_clone,
+                db: db_clone,
+            };
+
+            if rocket::build()
+                .mount(
+                    "/api",
+                    routes![
+                        api::add_event,
+                        api::add_quote,
+                        api::delete_event,
+                        api::delete_quote,
+                        api::events,
+                        api::f1_bets,
+                        api::quotes,
+                        api::say,
+                        api::score_f1_bets,
+                        api::update_event,
+                        api::update_quote,
+                    ],
+                )
+                .mount("/", FileServer::from("static/").rank(1))
+                .mount("/", routes![all])
+                .manage(my_state)
+                .launch()
+                .await
+                .is_err()
+            {
+                api_token.cancel();
+                eprintln!("Problem with the API task.");
+            }
+        });
+
+        // Spawn the next task.
+        let client_clone = Arc::clone(&client);
+        let db_clone = Arc::clone(&db);
+        let next_token = CancellationToken::new();
+        let next_token_clone = next_token.clone();
+        let next_task = task::spawn(async move {
+            tasks::next::next(client_clone, db_clone, next_token_clone).await;
+        });
+
+        // Spawn the external_message task.
+        let client_clone = Arc::clone(&client);
+        let external_message_token = CancellationToken::new();
+        let external_message_token_clone = external_message_token.clone();
+        let external_message_task = task::spawn(async move {
+            tasks::base::external_message(client_clone, external_message_token_clone).await;
+        });
+
+        // Spawn the feeds task.
+        let options_clone = Arc::clone(&options);
+        let client_clone = Arc::clone(&client);
+        let db_clone = Arc::clone(&db);
+        let feeds_token = CancellationToken::new();
+        let feeds_token_clone = feeds_token.clone();
+        let feeds_task = task::spawn(async move {
+            tasks::feeds::feeds(options_clone, client_clone, db_clone, feeds_token_clone).await
+        });
+
+        // Main loop that continously gets IRC messages from an asynchronous stream.
+        // Match any PRIVMSG received from the asynchronous stream of messages.
+        // If the message is a bot command, spawn a Tokio task to handle the command.
+        while let Ok(Some(message)) = stream.next().await.transpose() {
+            let sender = client.lock().await.sender();
+            let nick = match message.prefix {
+                Some(Prefix::Nickname(nick, _, _)) => Some(nick),
+                Some(Prefix::ServerName(_)) => None,
+                None => None,
+            };
+
+            if let Command::PRIVMSG(target, message) = message.command {
+                if message.len() > 1 && message.starts_with(prefix) {
+                    let options = Arc::clone(&options);
+                    let db = Arc::clone(&db);
+                    let client = Arc::clone(&client);
+
+                    task::spawn(async move {
+                        if let Ok(bot_command) = BotCommand::new(&message, nick, &target, &options)
+                        {
+                            let output = match time::timeout(
+                                Duration::from_secs(bot_command.timeout),
+                                bot_command.handle(db, client),
+                            )
+                            .await
+                            {
+                                Ok(output) => output,
+                                Err(_) => String::from("Timeout while running command."),
+                            };
+
+                            if let Err(error) = sender.send_privmsg(&target, output) {
+                                eprintln!("{error}");
+                            }
+                        }
+                    });
+                } else {
+                    task::spawn(async move {
+                        if let Some(url) = utils::find_url(&message) {
+                            if let Ok(Some(title)) = utils::find_title(url).await {
+                                if let Err(error) = sender.send_privmsg(&target, title) {
+                                    eprint!("{error}");
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        eprintln!("Diconnected from the IRC server.");
+
+        // Cancel the next task.
+        // If the task doesn't finish, terminate the bot.
+        next_token.cancel();
+
+        if next_task.await.is_err() {
+            eprintln!("Could not cancel next task.");
+            eprintln!("Terminating bot...");
 
             return;
         }
-    };
 
-    if let Err(error) = client.lock().await.identify() {
-        eprintln!("{error}");
-    }
+        eprintln!("Next task finished.");
 
-    let client_clone = Arc::clone(&client);
-    let db_clone = Arc::clone(&db);
+        // Cancel the external_message task.
+        // If the task doesn't finish, terminate the bot.
+        external_message_token.cancel();
 
-    // Spawn a background task to handle API requests to the bot.
-    task::spawn(async move {
-        let my_state = api::BotState {
-            client: client_clone,
-            db: db_clone,
-        };
+        if external_message_task.await.is_err() {
+            eprintln!("Could not cancel external_message task.");
+            eprintln!("Terminating bot...");
 
-        let _rocket = rocket::build()
-            .mount(
-                "/api",
-                routes![
-                    api::add_event,
-                    api::add_quote,
-                    api::delete_event,
-                    api::delete_quote,
-                    api::events,
-                    api::f1_bets,
-                    api::quotes,
-                    api::say,
-                    api::score_f1_bets,
-                    api::update_event,
-                    api::update_quote,
-                ],
-            )
-            .mount("/", FileServer::from("static/").rank(1))
-            .mount("/", routes![all])
-            .manage(my_state)
-            .launch()
-            .await
-            .unwrap();
-    });
-
-    let client_clone = Arc::clone(&client);
-    let db_clone = Arc::clone(&db);
-
-    // Spawn various different background tasks that run indefinitely.
-    task::spawn(async move {
-        tasks::next::next(client_clone, db_clone).await;
-    });
-
-    let client_clone = Arc::clone(&client);
-
-    task::spawn(async move {
-        tasks::base::external_message(client_clone).await;
-    });
-
-    let options_clone = Arc::clone(&options);
-    let client_clone = Arc::clone(&client);
-    let db_clone = Arc::clone(&db);
-
-    task::spawn(async move { tasks::feeds::feeds(options_clone, client_clone, db_clone).await });
-
-    // Main loop that continously gets IRC messages from an asynchronous stream.
-    // Match any PRIVMSG received from the asynchronous stream of messages.
-    // If the message is a bot command, spawn a Tokio task to handle the command.
-    while let Ok(Some(message)) = stream.next().await.transpose() {
-        let sender = client.lock().await.sender();
-        let nick = match message.prefix {
-            Some(Prefix::Nickname(nick, _, _)) => Some(nick),
-            Some(Prefix::ServerName(_)) => None,
-            None => None,
-        };
-
-        if let Command::PRIVMSG(target, message) = message.command {
-            if message.len() > 1 && message.starts_with(prefix) {
-                let options = Arc::clone(&options);
-                let db = Arc::clone(&db);
-                let client = Arc::clone(&client);
-
-                task::spawn(async move {
-                    if let Ok(bot_command) = BotCommand::new(&message, nick, &target, &options) {
-                        let output = match time::timeout(
-                            Duration::from_secs(bot_command.timeout),
-                            bot_command.handle(db, client),
-                        )
-                        .await
-                        {
-                            Ok(output) => output,
-                            Err(_) => String::from("Timeout while running command."),
-                        };
-
-                        if let Err(error) = sender.send_privmsg(&target, output) {
-                            eprintln!("{error}");
-                        }
-                    }
-                });
-            } else {
-                task::spawn(async move {
-                    if let Some(url) = utils::find_url(&message) {
-                        if let Ok(Some(title)) = utils::find_title(url).await {
-                            if let Err(error) = sender.send_privmsg(&target, title) {
-                                eprint!("{error}");
-                            }
-                        }
-                    }
-                });
-            }
+            return;
         }
+
+        eprintln!("External Message task finished.");
+
+        // Cancel the feeds task.
+        // If the task doesn't finish, terminate the bot.
+        feeds_token.cancel();
+
+        if feeds_task.await.is_err() {
+            eprintln!("Could not cancel feeds task.");
+            eprintln!("Terminating bot...");
+
+            return;
+        }
+
+        eprintln!("Feeds task finished.");
+
+        // Wait 30 seconds before trying to reconnect.
+        time::sleep(Duration::from_secs(30)).await;
     }
 }

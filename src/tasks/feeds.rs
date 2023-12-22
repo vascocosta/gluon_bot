@@ -8,6 +8,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::task;
 use tokio::time::{sleep, Duration};
+use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, PartialEq)]
 struct Feed {
@@ -47,13 +48,27 @@ pub async fn feeds(
     options: Arc<HashMap<String, String>>,
     client: Arc<Mutex<Client>>,
     db: Arc<Mutex<Database>>,
+    token: CancellationToken,
 ) {
-    loop {
-        sleep(Duration::from_secs(match options.get("feed_refresh") {
+    while !token.is_cancelled() {
+        let feed_refresh = match options.get("feed_refresh") {
             Some(feed_refresh) => feed_refresh.parse().unwrap_or(300),
             None => 300,
-        }))
-        .await;
+        };
+
+        for _ in 0..feed_refresh {
+            if token.is_cancelled() {
+                return;
+            }
+
+            sleep(Duration::from_secs(1)).await;
+        }
+
+        // sleep(Duration::from_secs(match options.get("feed_refresh") {
+        //     Some(feed_refresh) => feed_refresh.parse().unwrap_or(300),
+        //     None => 300,
+        // }))
+        // .await;
 
         let feeds: Vec<Feed> = match db.lock().await.select("feeds", |_| true) {
             Ok(feeds) => match feeds {
