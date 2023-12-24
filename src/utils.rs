@@ -25,7 +25,7 @@ pub async fn find_title(url: &str) -> Result<Option<String>, Box<dyn Error>> {
 }
 
 pub fn find_url(message: &str) -> Option<&str> {
-    match Regex::new(r#"https?://[^\s]+"#) {
+    match Regex::new(r"https?://[^\s]+") {
         Ok(re) => re.find(message).map(|url| url.as_str()),
         Err(_) => None,
     }
