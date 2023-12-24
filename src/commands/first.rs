@@ -312,7 +312,7 @@ pub async fn first_stats(target: &str, db: Arc<Mutex<Database>>) -> String {
 
     for first_result in first_results {
         days.entry(String::from(&first_result.datetime.to_string()[..=10]))
-            .or_insert(Vec::default())
+            .or_default()
             .push(first_result);
     }
 
