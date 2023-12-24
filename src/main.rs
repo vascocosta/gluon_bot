@@ -175,7 +175,6 @@ async fn main() {
                     let options = Arc::clone(&options);
                     let db = Arc::clone(&db);
                     let client = Arc::clone(&client);
-
                     task::spawn(async move {
                         if let Ok(bot_command) = BotCommand::new(&message, nick, &target, &options)
                         {
