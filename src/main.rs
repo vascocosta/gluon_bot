@@ -30,8 +30,7 @@ async fn all(_path: PathBuf) -> Option<NamedFile> {
 #[tokio::main]
 async fn main() {
     loop {
-        // Variables that run exclusively on the main task/thread are declared like regular variables.
-        // Variables whose immutable/mutable reference is shared among tasks/threads use an Arc/Mutex.
+        // Configure an IRC cient with settings from a config file.
         let config = match Config::load("config.toml") {
             Ok(config) => config,
             Err(error) => match error {
@@ -76,6 +75,8 @@ async fn main() {
             },
             None,
         )));
+
+        // Connect the IRC client to the IRC server.
         let mut stream = match client.lock().await.stream() {
             Ok(stream) => stream,
             Err(error) => {
@@ -92,6 +93,7 @@ async fn main() {
         println!("Connected to the IRC server.");
 
         // Spawn the API task.
+        // TODO: Find a way to cancel this task during disconnects.
         let client_clone = Arc::clone(&client);
         let db_clone = Arc::clone(&db);
         let api_token = CancellationToken::new();
@@ -248,6 +250,9 @@ async fn main() {
         eprintln!("Feeds task finished.");
 
         // Wait 30 seconds before trying to reconnect.
+        // This should avoid an overly fast reconnect.
+        println!("Waiting 30 seconds before reconnecting to the IRC server...");
         time::sleep(Duration::from_secs(30)).await;
+        println!("Reconnecting to the IRC server...");
     }
 }
