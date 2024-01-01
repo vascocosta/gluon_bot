@@ -310,7 +310,7 @@ pub async fn stats(period: Period, target: &str, db: Arc<Mutex<Database>>) -> St
                 Weekday::Sun => 7,
             }
         }
-        Period::Month => (now.day() - 1) as u64,
+        Period::Month => now.day() as u64,
         Period::Year => 365, // This is a temporary hardcoded value.
     };
     let start_date = match now.date_naive().checked_sub_days(Days::new(day_number)) {
