@@ -311,7 +311,7 @@ pub async fn stats(period: Period, target: &str, db: Arc<Mutex<Database>>) -> St
             }
         }
         Period::Month => (now.day() - 1) as u64,
-        Period::Year => 200,
+        Period::Year => 365, // This is a temporary hardcoded value.
     };
     let start_date = match now.date_naive().checked_sub_days(Days::new(day_number)) {
         Some(start_date) => start_date,
@@ -369,7 +369,7 @@ pub async fn stats(period: Period, target: &str, db: Arc<Mutex<Database>>) -> St
 
     let mut output: String = Default::default();
 
-    for (position, stat) in stats.into_iter().enumerate() {
+    for (position, stat) in stats.into_iter().take(10).enumerate() {
         if stat.points > 0 {
             let re = match Regex::new(r"[^A-Za-z0-9]+") {
                 Ok(re) => re,
