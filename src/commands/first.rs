@@ -14,6 +14,12 @@ const DEFAULT_CLOSE_MIN: u32 = 0;
 const RAND_OPEN_HOUR: Range<u32> = 5..12;
 const RAND_OPEN_MIN: Range<u32> = 0..59;
 
+pub enum Period {
+    Week,
+    Month,
+    Year,
+}
+
 #[derive(Debug, PartialEq)]
 struct FirstStat {
     nick: String,
@@ -280,17 +286,32 @@ pub async fn first(
     )
 }
 
-pub async fn first_stats(target: &str, db: Arc<Mutex<Database>>) -> String {
+pub async fn first_stats(args: &[String], target: &str, db: Arc<Mutex<Database>>) -> String {
+    match args.concat().to_lowercase().as_str() {
+        "month" => stats(Period::Month, target, db).await,
+        "year" => stats(Period::Year, target, db).await,
+        _ => stats(Period::Week, target, db).await,
+    }
+}
+
+pub async fn stats(period: Period, target: &str, db: Arc<Mutex<Database>>) -> String {
     let now = Utc::now();
-    let week_day = now.weekday();
-    let day_number = match week_day {
-        Weekday::Mon => 1,
-        Weekday::Tue => 2,
-        Weekday::Wed => 3,
-        Weekday::Thu => 4,
-        Weekday::Fri => 5,
-        Weekday::Sat => 6,
-        Weekday::Sun => 7,
+    let day_number = match period {
+        Period::Week => {
+            let week_day = now.weekday();
+
+            match week_day {
+                Weekday::Mon => 1,
+                Weekday::Tue => 2,
+                Weekday::Wed => 3,
+                Weekday::Thu => 4,
+                Weekday::Fri => 5,
+                Weekday::Sat => 6,
+                Weekday::Sun => 7,
+            }
+        }
+        Period::Month => (now.day() + 1) as u64,
+        Period::Year => 365,
     };
     let start_date = match now.date_naive().checked_sub_days(Days::new(day_number)) {
         Some(start_date) => start_date,

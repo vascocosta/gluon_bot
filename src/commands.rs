@@ -69,7 +69,7 @@ impl<'a> BotCommand<'a> {
                 first::first(&self.nick, &self.target, self.options, db, client).await
             }
             "first_results" => first::first_results(&self.target, db, client).await,
-            "first_stats" | "first_points" => first::first_stats(&self.target, db).await,
+            "first_stats" | "first_points" => first::first_stats(&self.args, &self.target, db).await,
             "hello" => base::hello(&self.nick).await,
             "help" | "h" | "commands" => base::help().await,
             "imdb" | "omdb" => omdb::omdb(&self.args, self.options).await,
