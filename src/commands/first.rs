@@ -16,8 +16,12 @@ const RAND_OPEN_MIN: Range<u32> = 0..59;
 
 pub enum Period {
     Week,
+    Weekly,
     Month,
+    Monthly,
     Year,
+    Yearly,
+    Unknown,
 }
 
 #[derive(Debug, PartialEq)]
@@ -288,9 +292,13 @@ pub async fn first(
 
 pub async fn first_stats(args: &[String], target: &str, db: Arc<Mutex<Database>>) -> String {
     match args.concat().to_lowercase().as_str() {
+        "week" => stats(Period::Week, target, db).await,
+        "weekly" => stats(Period::Weekly, target, db).await,
         "month" => stats(Period::Month, target, db).await,
+        "monthly" => stats(Period::Monthly, target, db).await,
         "year" => stats(Period::Year, target, db).await,
-        _ => stats(Period::Week, target, db).await,
+        "yearly" => stats(Period::Yearly, target, db).await,
+        _ => stats(Period::Unknown, target, db).await,
     }
 }
 
@@ -310,8 +318,21 @@ pub async fn stats(period: Period, target: &str, db: Arc<Mutex<Database>>) -> St
                 Weekday::Sun => 7,
             }
         }
+        Period::Weekly => 7,
         Period::Month => now.day() as u64,
-        Period::Year => 365, // This is a temporary hardcoded value.
+        Period::Monthly => 30,
+        Period::Year => now
+            .signed_duration_since(
+                DateTime::parse_from_str(format!("{}", now.year()).as_str(), "%Y")
+                    .unwrap_or_default(),
+            )
+            .num_days() as u64,
+        Period::Yearly => 365,
+        Period::Unknown => {
+            return String::from(
+                "Argument must be one of: week, weekly, month, monthly, year, yearly.",
+            )
+        }
     };
     let start_date = match now.date_naive().checked_sub_days(Days::new(day_number)) {
         Some(start_date) => start_date,
