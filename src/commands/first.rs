@@ -324,7 +324,7 @@ pub async fn stats(period: Period, target: &str, db: Arc<Mutex<Database>>) -> St
         Period::Year => now
             .signed_duration_since(
                 DateTime::parse_from_str(
-                    format!("{}-1-1 0:00 am +0000", now.year()).as_str(),
+                    format!("{}-12-31 11:59 pm +0000", now.year() - 1).as_str(),
                     "%Y-%m-%d %H:%M %P %z",
                 )
                 .unwrap_or_default(),
