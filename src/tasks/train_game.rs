@@ -260,3 +260,26 @@ pub async fn board(nick: &str, station: &str, args: &[String], db: Arc<Mutex<Dat
 
     format!("You've scheduled a boarding to train {}.", number)
 }
+
+pub async fn schedules(db: Arc<Mutex<Database>>) -> String {
+    let schedules = db
+        .lock()
+        .await
+        .select("train_schedules", |_: &TrainSchedule| true)
+        .unwrap_or_default()
+        .unwrap_or_default();
+
+    schedules
+        .into_iter()
+        .map(|s| {
+            format!(
+                "Train: {} Hour: {:0>2}:{:0>2} (UTC) Route: {}",
+                s.number,
+                s.hour,
+                s.minute,
+                s.route.join("->")
+            )
+        })
+        .collect::<Vec<String>>()
+        .join("\r\n")
+}

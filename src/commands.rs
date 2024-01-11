@@ -88,6 +88,7 @@ impl<'a> BotCommand<'a> {
                 base::reminder(&self.args, &self.nick, &self.target, client).await
             }
             "timezone" | "tz" => base::time_zone(&self.args, &self.nick, db).await,
+            "trains" | "schedules" => train_game::schedules(db).await,
             "weather" | "w" => weather::weather(&self.args, &self.nick, self.options, db).await,
             _ => plugin::plugin(&self.name, &self.args, &self.nick, self.options).await,
         }
