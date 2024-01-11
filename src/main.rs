@@ -159,6 +159,18 @@ async fn main() {
             tasks::feeds::feeds(options_clone, client_clone, db_clone, feeds_token_clone).await
         });
 
+        let client_clone = Arc::clone(&client);
+        let db_clone = Arc::clone(&db);
+        let train_game_token = CancellationToken::new();
+        let train_game_token_clone = feeds_token.clone();
+        let train_game_task = task::spawn(async move {
+            let train_game =
+                tasks::train_game::TrainGame::new(client_clone, db_clone, train_game_token_clone)
+                    .await;
+
+            train_game.run().await;
+        });
+
         // Main loop that continously gets IRC messages from an asynchronous stream.
         // Match any PRIVMSG received from the asynchronous stream of messages.
         // If the message is a bot command, spawn a Tokio task to handle the command.
@@ -247,6 +259,19 @@ async fn main() {
         }
 
         eprintln!("Feeds task finished.");
+
+        // Cancel the train_game task.
+        // If the task doesn't finish, terminate the bot.
+        train_game_token.cancel();
+
+        if train_game_task.await.is_err() {
+            eprintln!("Could not cancel train_game task.");
+            eprintln!("Terminating bot...");
+
+            return;
+        }
+
+        eprintln!("Train game task finished.");
 
         // Wait 30 seconds before trying to reconnect.
         // This should avoid an overly fast reconnect.

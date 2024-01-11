@@ -12,6 +12,7 @@ mod rates;
 mod weather;
 
 use crate::database::Database;
+use crate::tasks::train_game;
 use irc::client::Client;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -61,6 +62,7 @@ impl<'a> BotCommand<'a> {
             "alarm" => base::alarm(&self.args, &self.nick, &self.target, db, client).await,
             "ask" => base::ask(&self.args, db).await,
             "bet" => f1bet::bet(&self.args, &self.nick, &self.target, self.options, db).await,
+            "board" => train_game::board(&self.nick, &self.target, &self.args, db).await,
             "city" => city::city(&self.args, db).await,
             "date" | "time" => base::date_time().await,
             "f1results" => f1results::f1results().await,
@@ -69,7 +71,9 @@ impl<'a> BotCommand<'a> {
                 first::first(&self.nick, &self.target, self.options, db, client).await
             }
             "first_results" => first::first_results(&self.target, db, client).await,
-            "first_stats" | "first_points" => first::first_stats(&self.args, &self.target, db).await,
+            "first_stats" | "first_points" => {
+                first::first_stats(&self.args, &self.target, db).await
+            }
             "hello" => base::hello(&self.nick).await,
             "help" | "h" | "commands" => base::help().await,
             "imdb" | "omdb" => omdb::omdb(&self.args, self.options).await,
