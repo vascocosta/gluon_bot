@@ -80,6 +80,14 @@ impl TrainGame {
         db: Arc<Mutex<Database>>,
         token: CancellationToken,
     ) -> Self {
+        if let Err(error) = db
+            .lock()
+            .await
+            .delete("train_boardings", |_: &&Boarding| true)
+        {
+            eprintln!("{error}");
+        }
+
         let schedules = db
             .lock()
             .await
