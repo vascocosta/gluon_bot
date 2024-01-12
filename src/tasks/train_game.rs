@@ -194,14 +194,14 @@ impl TrainService {
             if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
                 station.to_owned(),
                 format!(
-                    "--> 🚉 Train {} has arrived at the {} station. Leaving in 1 minute...",
-                    self.schedule.number, station
+                    "--> 🚉 Train {} has arrived at the {} station ({} minute(s) delayed). Leaving in 2 minutes...",
+                    self.schedule.number, station, delay
                 ),
             )) {
                 eprintln!("{error}");
             }
 
-            time::sleep(Duration::from_secs(60)).await;
+            time::sleep(Duration::from_secs(120)).await;
             self.board(self.schedule.number, station).await;
 
             if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
