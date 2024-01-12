@@ -3,12 +3,15 @@ use chrono::Timelike;
 use chrono::Utc;
 use irc::client::prelude::Command;
 use irc::client::Client;
+use rand::prelude::*;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::task;
 use tokio::time;
 use tokio_util::sync::CancellationToken;
+
+const MAX_DELAY: u64 = 10;
 
 #[derive(Clone)]
 pub struct TrainSchedule {
@@ -183,7 +186,10 @@ impl TrainService {
         let route = self.schedule.route.clone();
 
         for station in &route {
-            time::sleep(Duration::from_secs(self.schedule.delta * 60)).await;
+            let mut rng = StdRng::from_entropy();
+            let delay = rng.gen_range(0..=MAX_DELAY);
+
+            time::sleep(Duration::from_secs((self.schedule.delta + delay) * 60)).await;
 
             if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
                 station.to_owned(),
