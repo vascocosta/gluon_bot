@@ -12,6 +12,7 @@ use tokio::time;
 use tokio_util::sync::CancellationToken;
 
 const MAX_DELAY: u64 = 10;
+const DERAIL_PROB: u8 = 30;
 
 #[derive(Clone)]
 pub struct TrainSchedule {
@@ -190,6 +191,22 @@ impl TrainService {
             let delay = rng.gen_range(0..=MAX_DELAY);
 
             time::sleep(Duration::from_secs((self.schedule.delta + delay) * 60)).await;
+
+            if rng.gen_range(1..=100) <= DERAIL_PROB {
+                if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
+                    station.to_owned(),
+                    format!(
+                        "⚠️ 🚉 Train {} has derailed before reaching the {} station!!! Survivors: {:?}",
+                        self.schedule.number, station, self.passengers
+                    ),
+                )) {
+                    eprintln!("{error}");
+                }
+
+                self.deboard().await;
+
+                return;
+            }
 
             if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
                 station.to_owned(),
