@@ -1,4 +1,5 @@
 use crate::database::{CsvRecord, Database};
+use chrono::DateTime;
 use chrono::Timelike;
 use chrono::Utc;
 use irc::client::prelude::Command;
@@ -44,6 +45,30 @@ impl CsvRecord for TrainSchedule {
             self.delta.to_string(),
             self.capacity.to_string(),
             self.route.join(":"),
+        ]
+    }
+}
+
+pub struct Arrival {
+    datetime: DateTime<Utc>,
+    nick: String,
+    number: usize,
+}
+
+impl CsvRecord for Arrival {
+    fn from_fields(fields: &[String]) -> Self {
+        Self {
+            datetime: fields[0].parse().unwrap_or_default(),
+            nick: fields[1].to_lowercase(),
+            number: fields[2].parse().unwrap_or_default(),
+        }
+    }
+
+    fn to_fields(&self) -> Vec<String> {
+        vec![
+            self.datetime.to_string(),
+            self.nick.clone(),
+            self.number.to_string(),
         ]
     }
 }
@@ -150,6 +175,24 @@ impl TrainService {
         }
     }
 
+    async fn arrive(&self) {
+        let arrivals: Vec<Arrival> = self
+            .passengers
+            .iter()
+            .map(|p| Arrival {
+                datetime: Utc::now(),
+                nick: p.to_lowercase(),
+                number: self.schedule.number,
+            })
+            .collect();
+
+        for arrival in arrivals {
+            if let Err(error) = self.db.lock().await.insert("arrivals", arrival) {
+                eprintln!("{error}");
+            }
+        }
+    }
+
     async fn board(&mut self, number: usize, station: &str) {
         let boardings: Vec<Boarding> = self
             .db
@@ -247,6 +290,7 @@ impl TrainService {
             eprintln!("{error}");
         }
 
+        self.arrive().await;
         self.deboard().await;
     }
 }
