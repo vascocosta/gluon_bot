@@ -340,13 +340,13 @@ pub async fn schedules(db: Arc<Mutex<Database>>) -> String {
         .into_iter()
         .map(|s| {
             format!(
-                "Train: {} Hour: {:0>2}:{:0>2} (UTC) Route: {}",
+                "{}: {:0>2}:{:0>2} (UTC) {}",
                 s.number,
                 s.hour,
                 s.minute,
-                s.route.join("->")
+                s.route.first().unwrap_or(&String::from("NA"))
             )
         })
         .collect::<Vec<String>>()
-        .join("\r\n")
+        .join(" | ")
 }
