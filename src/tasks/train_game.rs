@@ -188,7 +188,7 @@ impl TrainService {
             .collect();
 
         for arrival in arrivals {
-            if let Err(error) = self.db.lock().await.insert("arrivals", arrival) {
+            if let Err(error) = self.db.lock().await.insert("train_arrivals", arrival) {
                 eprintln!("{error}");
             }
         }
@@ -353,7 +353,7 @@ pub async fn schedules(db: Arc<Mutex<Database>>) -> String {
 }
 
 pub async fn points(db: Arc<Mutex<Database>>) -> String {
-    let arrivals = match db.lock().await.select("arrivals", |_: &Arrival| true) {
+    let arrivals = match db.lock().await.select("train_arrivals", |_: &Arrival| true) {
         Ok(Some(arrivals)) => arrivals,
         Ok(None) => return String::from("There are no arrivals."),
         Err(_) => return String::from("Could not read arrivals."),
