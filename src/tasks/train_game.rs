@@ -4,7 +4,9 @@ use chrono::Timelike;
 use chrono::Utc;
 use irc::client::prelude::Command;
 use irc::client::Client;
+use itertools::Itertools;
 use rand::prelude::*;
+use rocket::http::ext::IntoCollection;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
@@ -349,4 +351,37 @@ pub async fn schedules(db: Arc<Mutex<Database>>) -> String {
         })
         .collect::<Vec<String>>()
         .join(" | ")
+}
+
+pub async fn points(db: Arc<Mutex<Database>>) -> String {
+    let arrivals = match db.lock().await.select("arrivals", |_: &Arrival| true) {
+        Ok(Some(arrivals)) => arrivals,
+        Ok(None) => return String::from("There are no arrivals."),
+        Err(_) => return String::from("Could not read arrivals."),
+    };
+
+    let grouped_arrivals: Vec<(String, Vec<Arrival>)> = arrivals
+        .into_iter()
+        .group_by(|a: &Arrival| a.nick.to_lowercase())
+        .into_iter()
+        .map(|(key, group)| (key, group.collect()))
+        .collect();
+    let scored_arrivals: Vec<(String, u64)> = grouped_arrivals
+        .into_iter()
+        .map(|e| {
+            (
+                e.0,
+                e.1.into_iter().fold(0, |score, a| {
+                    // I need to replace these hardcoded values with something better.
+                    if a.number == 7001 || a.number == 801 {
+                        score + 20
+                    } else {
+                        score + 10
+                    }
+                }),
+            )
+        })
+        .collect();
+
+    format!("{:?}", scored_arrivals)
 }

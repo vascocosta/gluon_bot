@@ -90,6 +90,7 @@ impl<'a> BotCommand<'a> {
             "timezone" | "tz" => base::time_zone(&self.args, &self.nick, db).await,
             "trains" | "schedules" => train_game::schedules(db).await,
             "weather" | "w" => weather::weather(&self.args, &self.nick, self.options, db).await,
+            "wtc" => train_game::points(db).await,
             _ => plugin::plugin(&self.name, &self.args, &self.nick, self.options).await,
         }
     }
