@@ -358,7 +358,6 @@ pub async fn points(db: Arc<Mutex<Database>>) -> String {
         Ok(None) => return String::from("There are no arrivals."),
         Err(_) => return String::from("Could not read arrivals."),
     };
-
     let grouped_arrivals: Vec<(String, Vec<Arrival>)> = arrivals
         .into_iter()
         .group_by(|a: &Arrival| a.nick.to_lowercase())
@@ -380,7 +379,24 @@ pub async fn points(db: Arc<Mutex<Database>>) -> String {
                 }),
             )
         })
+        .sorted_by(|a, b| b.1.cmp(&a.1))
         .collect();
 
-    format!("{:?}", scored_arrivals)
+    scored_arrivals
+        .iter()
+        .enumerate()
+        .map(|(pos, (nick, points))| {
+            format!(
+                "{}. {} {}",
+                pos + 1,
+                nick.to_uppercase()
+                    .chars()
+                    .filter(|c| c.is_alphanumeric())
+                    .take(3)
+                    .collect::<String>(),
+                points
+            )
+        })
+        .collect::<Vec<String>>()
+        .join(" | ")
 }
