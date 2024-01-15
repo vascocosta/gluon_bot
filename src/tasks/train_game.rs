@@ -14,7 +14,7 @@ use tokio::time;
 use tokio_util::sync::CancellationToken;
 
 const MAX_DELAY: u64 = 10;
-const DERAIL_PROB: u8 = 30;
+const DERAIL_PROB: u8 = 15;
 
 #[derive(Clone)]
 pub struct TrainSchedule {
