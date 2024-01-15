@@ -6,7 +6,6 @@ use irc::client::prelude::Command;
 use irc::client::Client;
 use itertools::Itertools;
 use rand::prelude::*;
-use rocket::http::ext::IntoCollection;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
