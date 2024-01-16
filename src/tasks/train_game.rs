@@ -270,8 +270,8 @@ impl TrainService {
             if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
                 station.to_owned(),
                 format!(
-                    "--> 🚉 Train {} has arrived at the {} station ({} minute(s) delayed). Leaving in 2 minutes...",
-                    self.schedule.number, station, delay
+                    "--> 🚉 Train {} ({} points) has arrived at the {} station ({} minute(s) delayed).",
+                    self.schedule.number, self.schedule.score, station, delay
                 ),
             )) {
                 eprintln!("{error}");
