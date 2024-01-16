@@ -6,6 +6,7 @@ use irc::client::prelude::Command;
 use irc::client::Client;
 use itertools::Itertools;
 use rand::prelude::*;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
@@ -22,7 +23,7 @@ pub struct TrainSchedule {
     hour: u32,
     minute: u32,
     delta: u64,
-    capacity: usize,
+    score: u64,
     route: Vec<String>,
 }
 
@@ -33,7 +34,7 @@ impl CsvRecord for TrainSchedule {
             hour: fields[1].parse().unwrap_or(25),
             minute: fields[2].parse().unwrap_or(61),
             delta: fields[3].parse().unwrap_or(60),
-            capacity: fields[4].parse().unwrap_or(4),
+            score: fields[4].parse().unwrap_or(10),
             route: fields[5].split(':').map(String::from).collect(),
         }
     }
@@ -44,7 +45,7 @@ impl CsvRecord for TrainSchedule {
             self.hour.to_string(),
             self.minute.to_string(),
             self.delta.to_string(),
-            self.capacity.to_string(),
+            self.score.to_string(),
             self.route.join(":"),
         ]
     }
@@ -352,7 +353,26 @@ pub async fn schedules(db: Arc<Mutex<Database>>) -> String {
         .join(" | ")
 }
 
+pub async fn scores(db: Arc<Mutex<Database>>) -> HashMap<usize, u64> {
+    let mut scores: HashMap<usize, u64> = HashMap::new();
+    match db
+        .lock()
+        .await
+        .select("train_schedules", |_: &TrainSchedule| true)
+    {
+        Ok(Some(schedules)) => {
+            for schedule in schedules {
+                scores.insert(schedule.number, schedule.score);
+            }
+
+            scores
+        }
+        _ => scores,
+    }
+}
+
 pub async fn points(db: Arc<Mutex<Database>>) -> String {
+    let scores = scores(db.clone()).await;
     let arrivals = match db.lock().await.select("train_arrivals", |_: &Arrival| true) {
         Ok(Some(arrivals)) => arrivals,
         Ok(None) => return String::from("There are no arrivals."),
@@ -370,14 +390,8 @@ pub async fn points(db: Arc<Mutex<Database>>) -> String {
         .map(|e| {
             (
                 e.0,
-                e.1.into_iter().fold(0, |score, a| {
-                    // I need to replace these hardcoded values with something better.
-                    if a.number == 7001 || a.number == 801 {
-                        score + 20
-                    } else {
-                        score + 10
-                    }
-                }),
+                e.1.into_iter()
+                    .fold(0, |total, a| total + scores.get(&a.number).unwrap_or(&0)),
             )
         })
         .sorted_by(|a, b| b.1.cmp(&a.1))
