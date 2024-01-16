@@ -252,13 +252,15 @@ impl TrainService {
             time::sleep(Duration::from_secs((self.schedule.delta + delay) * 60)).await;
 
             if rng.gen_range(1..=100) <= DERAIL_PROB {
-                if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
-                    station.to_owned(),
-                    format!(
-                        "⚠️ 🚉 Train {} has derailed before reaching the {} station!!! Survivors: {}",
+                if let Err(error) =
+                    self.client.lock().await.send(Command::PRIVMSG(
+                        station.to_owned(),
+                        format!(
+                        "!!! ⚠️ Train {} has derailed before reaching the {} station! Survivors: {}",
                         self.schedule.number, station, self.passengers()
                     ),
-                )) {
+                    ))
+                {
                     eprintln!("{error}");
                 }
 
