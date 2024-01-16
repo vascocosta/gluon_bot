@@ -226,6 +226,20 @@ impl TrainService {
         }
     }
 
+    fn passengers(&self) -> String {
+        self.passengers
+            .iter()
+            .map(|p| {
+                p.to_uppercase()
+                    .chars()
+                    .filter(|c| c.is_alphanumeric())
+                    .take(3)
+                    .collect()
+            })
+            .collect::<Vec<String>>()
+            .join(", ")
+    }
+
     async fn run(&mut self) {
         // This clone is needed to avoid having an immutable reference to self at the same time as
         // a mutable reference to self (calling the board method).
@@ -241,8 +255,8 @@ impl TrainService {
                 if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
                     station.to_owned(),
                     format!(
-                        "⚠️ 🚉 Train {} has derailed before reaching the {} station!!! Survivors: {:?}",
-                        self.schedule.number, station, self.passengers
+                        "⚠️ 🚉 Train {} has derailed before reaching the {} station!!! Survivors: {}",
+                        self.schedule.number, station, self.passengers()
                     ),
                 )) {
                     eprintln!("{error}");
@@ -269,8 +283,10 @@ impl TrainService {
             if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
                 station.to_owned(),
                 format!(
-                    "<-- 🚉 Train {} has departed the {} station. Onboard: {:?}",
-                    self.schedule.number, station, self.passengers
+                    "<-- 🚉 Train {} has departed the {} station. Onboard: {}",
+                    self.schedule.number,
+                    station,
+                    self.passengers()
                 ),
             )) {
                 eprintln!("{error}");
