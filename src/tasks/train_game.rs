@@ -15,6 +15,7 @@ use tokio::time;
 use tokio_util::sync::CancellationToken;
 
 const MAX_DELAY: u64 = 10;
+const STOP_TIME: u64 = 5;
 const DERAIL_PROB: u8 = 15;
 
 #[derive(Clone)]
@@ -279,7 +280,7 @@ impl TrainService {
                 eprintln!("{error}");
             }
 
-            time::sleep(Duration::from_secs(120)).await;
+            time::sleep(Duration::from_secs(STOP_TIME * 60)).await;
             self.board(self.schedule.number, station).await;
 
             if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
