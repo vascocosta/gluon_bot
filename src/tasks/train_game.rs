@@ -360,6 +360,7 @@ pub async fn points(db: Arc<Mutex<Database>>) -> String {
     };
     let grouped_arrivals: Vec<(String, Vec<Arrival>)> = arrivals
         .into_iter()
+        .sorted_by_key(|a: &Arrival| a.nick.to_lowercase())
         .group_by(|a: &Arrival| a.nick.to_lowercase())
         .into_iter()
         .map(|(key, group)| (key, group.collect()))
