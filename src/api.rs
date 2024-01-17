@@ -209,7 +209,7 @@ pub async fn update_event(
     state: &State<BotState>,
 ) -> &'static str {
     let new_event = match input.get(1) {
-        Some(new_event) => new_event.clone(),
+        Some(new_event) => new_event,
         None => return "Failure",
     };
     let search_event = match input.get(0) {
@@ -379,7 +379,7 @@ pub async fn update_quote(
     state: &State<BotState>,
 ) -> &'static str {
     let new_quote = match input.get(1) {
-        Some(new_quote) => new_quote.clone(),
+        Some(new_quote) => new_quote,
         None => return "Failure",
     };
     let search_quote = match input.get(0) {
