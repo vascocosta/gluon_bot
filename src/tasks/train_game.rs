@@ -21,6 +21,7 @@ const DERAIL_PROB: u8 = 15;
 #[derive(Clone)]
 pub struct TrainSchedule {
     number: usize,
+    name: String,
     hour: u32,
     minute: u32,
     delta: u64,
@@ -32,17 +33,19 @@ impl CsvRecord for TrainSchedule {
     fn from_fields(fields: &[String]) -> Self {
         Self {
             number: fields[0].parse().unwrap_or(0),
-            hour: fields[1].parse().unwrap_or(25),
-            minute: fields[2].parse().unwrap_or(61),
-            delta: fields[3].parse().unwrap_or(60),
-            score: fields[4].parse().unwrap_or(10),
-            route: fields[5].split(':').map(String::from).collect(),
+            name: fields[1].parse().unwrap_or_default(),
+            hour: fields[2].parse().unwrap_or(25),
+            minute: fields[3].parse().unwrap_or(61),
+            delta: fields[4].parse().unwrap_or(60),
+            score: fields[5].parse().unwrap_or(10),
+            route: fields[6].split(':').map(String::from).collect(),
         }
     }
 
     fn to_fields(&self) -> Vec<String> {
         vec![
             self.number.to_string(),
+            self.name.clone(),
             self.hour.to_string(),
             self.minute.to_string(),
             self.delta.to_string(),
@@ -256,8 +259,9 @@ impl TrainService {
                 if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
                     station.to_owned(),
                     format!(
-                        "!!! ⚠️ {} has derailed before reaching {}! Survivors: {}",
+                        "!!! ⚠️ {} {} has derailed before reaching {}! Survivors: {}",
                         self.schedule.number,
+                        self.schedule.name,
                         station,
                         self.passengers()
                     ),
@@ -273,8 +277,8 @@ impl TrainService {
             if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
                 station.to_owned(),
                 format!(
-                    "--> 🚉 {} has arrived at {} ({} min delayed). Points: {}. To board: !board {}",
-                    self.schedule.number, station, delay, self.schedule.score, self.schedule.number
+                    "--> 🚉 {} {} has arrived at {} ({} min delayed). Points: {}. To board: !board {}",
+                    self.schedule.number, self.schedule.name, station, delay, self.schedule.score, self.schedule.number
                 ),
             )) {
                 eprintln!("{error}");
@@ -287,8 +291,9 @@ impl TrainService {
                 if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
                     station.to_owned(),
                     format!(
-                        "<-- 🚉 {} has departed {}. Passengers: {}",
+                        "<-- 🚉 {} {} has departed {}. Passengers: {}",
                         self.schedule.number,
+                        self.schedule.name,
                         station,
                         self.passengers()
                     ),
@@ -298,8 +303,9 @@ impl TrainService {
             } else if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
                 station.to_owned(),
                 format!(
-                    "--- 🛑 Train {} has ended. Passengers: {}. Route: {:?}",
+                    "--- 🛑 {} {} has ended. Passengers: {}. Route: {:?}",
                     self.schedule.number,
+                    self.schedule.name,
                     self.passengers(),
                     self.schedule.route
                 ),
