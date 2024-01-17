@@ -246,7 +246,7 @@ impl TrainService {
         // a mutable reference to self (calling the board method).
         let route = self.schedule.route.clone();
 
-        for station in &route {
+        for (index, station) in route.iter().enumerate() {
             let mut rng = StdRng::from_entropy();
             let delay = rng.gen_range(0..=MAX_DELAY);
 
@@ -273,8 +273,8 @@ impl TrainService {
             if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
                 station.to_owned(),
                 format!(
-                    "--> 🚉 Train {} ({} points) has arrived at the {} station ({} minute(s) delayed).",
-                    self.schedule.number, self.schedule.score, station, delay
+                    "--> 🚉 Train {} has arrived at the {} station ({} min delayed). Points: {}",
+                    self.schedule.number, station, delay, self.schedule.score
                 ),
             )) {
                 eprintln!("{error}");
@@ -283,32 +283,29 @@ impl TrainService {
             time::sleep(Duration::from_secs(STOP_TIME * 60)).await;
             self.board(self.schedule.number, station).await;
 
-            if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
+            if index != route.len() - 1 {
+                if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
+                    station.to_owned(),
+                    format!(
+                        "<-- 🚉 Train {} has departed the {} station. Passengers: {}",
+                        self.schedule.number,
+                        station,
+                        self.passengers()
+                    ),
+                )) {
+                    eprintln!("{error}");
+                }
+            } else if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
                 station.to_owned(),
                 format!(
-                    "<-- 🚉 Train {} has departed the {} station. Onboard: {}",
+                    "--- 🛑 Train {} has ended. Passengers: {}. Route: {:?}",
                     self.schedule.number,
-                    station,
-                    self.passengers()
+                    self.passengers(),
+                    self.schedule.route
                 ),
             )) {
                 eprintln!("{error}");
             }
-        }
-
-        let station = match self.schedule.route.last() {
-            Some(station) => station.to_owned(),
-            None => String::from("#aviation"),
-        };
-
-        if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
-            station,
-            format!(
-                "--- 🛑 Train {} has ended. Start time: {:0>2}:{:0>2}. Route: {:?}",
-                self.schedule.number, self.schedule.hour, self.schedule.minute, self.schedule.route
-            ),
-        )) {
-            eprintln!("{error}");
         }
 
         self.arrive().await;
