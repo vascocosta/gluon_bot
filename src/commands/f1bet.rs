@@ -64,30 +64,35 @@ impl CsvRecord for Event {
 }
 
 pub struct ScoringSystem {
-    boost: i32,
-    correct: i32,
-    fl: i32,
-    podium: i32,
+    base: i32,
+    fboost: i32,
+    fcorrect: i32,
+    pboost: i32,
+    pcorrect: i32,
 }
 
 impl ScoringSystem {
     pub fn from_options(options: &HashMap<String, String>) -> Self {
         ScoringSystem {
-            boost: match options.get("f1bet_boost") {
-                Some(boost) => boost.parse().unwrap_or(10),
-                None => 10,
-            },
-            correct: match options.get("f1bet_correct") {
-                Some(correct) => correct.parse().unwrap_or(5),
-                None => 5,
-            },
-            fl: match options.get("f1bet_fl") {
-                Some(fl) => fl.parse().unwrap_or(1),
+            base: match options.get("f1bet_base") {
+                Some(base) => base.parse().unwrap_or(1),
                 None => 1,
             },
-            podium: match options.get("f1bet_podium") {
-                Some(podium) => podium.parse().unwrap_or(3),
-                None => 3,
+            fboost: match options.get("f1bet_fboost") {
+                Some(fboost) => fboost.parse().unwrap_or(10),
+                None => 10,
+            },
+            fcorrect: match options.get("f1bet_fcorrect") {
+                Some(fcorrect) => fcorrect.parse().unwrap_or(5),
+                None => 5,
+            },
+            pboost: match options.get("f1bet_pboost") {
+                Some(pboost) => pboost.parse().unwrap_or(5),
+                None => 5,
+            },
+            pcorrect: match options.get("f1bet_pcorrect") {
+                Some(pcorrect) => pcorrect.parse().unwrap_or(2),
+                None => 2,
             },
         }
     }
@@ -100,7 +105,8 @@ pub struct Bet {
     pub p1: String,
     pub p2: String,
     pub p3: String,
-    pub fl: String,
+    pub p4: String,
+    pub p5: String,
 }
 
 impl CsvRecord for Bet {
@@ -111,7 +117,8 @@ impl CsvRecord for Bet {
             p1: fields[2].clone(),
             p2: fields[3].clone(),
             p3: fields[4].clone(),
-            fl: fields[5].clone(),
+            p4: fields[5].clone(),
+            p5: fields[6].clone(),
         }
     }
 
@@ -122,25 +129,19 @@ impl CsvRecord for Bet {
             self.p1.clone(),
             self.p2.clone(),
             self.p3.clone(),
-            self.fl.clone(),
+            self.p4.clone(),
+            self.p5.clone(),
         ]
     }
 }
 
 async fn valid_drivers(drivers: &[String], db: Arc<Mutex<Database>>) -> bool {
-    let podium_drivers: Vec<Driver> = match db.lock().await.select("drivers", |d: &Driver| {
+    let valid_drivers: Vec<Driver> = match db.lock().await.select("drivers", |d: &Driver| {
         d.code.to_lowercase() == drivers[0].to_lowercase()
             || d.code.to_lowercase() == drivers[1].to_lowercase()
             || d.code.to_lowercase() == drivers[2].to_lowercase()
-    }) {
-        Ok(drivers_result) => match drivers_result {
-            Some(drivers) => drivers,
-            None => return false,
-        },
-        Err(_) => return false,
-    };
-    let fl_driver: Vec<Driver> = match db.lock().await.select("drivers", |d: &Driver| {
-        d.code.to_lowercase() == drivers[3].to_lowercase()
+            || d.code.to_lowercase() == drivers[3].to_lowercase()
+            || d.code.to_lowercase() == drivers[4].to_lowercase()
     }) {
         Ok(drivers_result) => match drivers_result {
             Some(drivers) => drivers,
@@ -149,7 +150,7 @@ async fn valid_drivers(drivers: &[String], db: Arc<Mutex<Database>>) -> bool {
         Err(_) => return false,
     };
 
-    podium_drivers.len() + fl_driver.len() == 4
+    valid_drivers.len() == 5
 }
 
 async fn next_race(target: &str, db: Arc<Mutex<Database>>) -> Option<Event> {
@@ -177,82 +178,84 @@ fn bets_log(
     scoring_system: ScoringSystem,
     amount: usize,
 ) -> Option<String> {
-    let user_bets: Vec<String> = bets
-        .iter()
-        .filter(|b| b.nick.to_lowercase() == nick.to_lowercase())
-        .map(|b| {
-            let bet = [
-                b.p1.to_lowercase(),
-                b.p2.to_lowercase(),
-                b.p3.to_lowercase(),
-            ];
-            let results: Vec<_> = results
-                .iter()
-                .filter(|r| r.race.to_lowercase() == b.race.to_lowercase())
-                .collect();
+    // let user_bets: Vec<String> = bets
+    //     .iter()
+    //     .filter(|b| b.nick.to_lowercase() == nick.to_lowercase())
+    //     .map(|b| {
+    //         let bet = [
+    //             b.p1.to_lowercase(),
+    //             b.p2.to_lowercase(),
+    //             b.p3.to_lowercase(),
+    //         ];
+    //         let results: Vec<_> = results
+    //             .iter()
+    //             .filter(|r| r.race.to_lowercase() == b.race.to_lowercase())
+    //             .collect();
 
-            if results.is_empty() {
-                return (b.race.clone(), bet, b.fl.clone(), 0);
-            }
+    //         if results.is_empty() {
+    //             todo!() //return (b.race.clone(), bet, b.fl.clone(), 0);
+    //         }
 
-            let result = [
-                results[0].p1.to_lowercase(),
-                results[0].p2.to_lowercase(),
-                results[0].p3.to_lowercase(),
-            ];
-            let zipped: Vec<(String, String)> = bet
-                .iter()
-                .zip(result.iter())
-                .filter(|(b, _)| result.contains(b))
-                .map(|(b, r)| (b.to_owned(), r.to_owned()))
-                .collect();
-            let podium_score: i32 = zipped
-                .iter()
-                .map(|(b, r)| {
-                    if b == r {
-                        scoring_system.correct
-                    } else {
-                        scoring_system.podium
-                    }
-                })
-                .sum();
-            let boost_score = if podium_score == (3 * scoring_system.correct) {
-                podium_score + scoring_system.boost
-            } else {
-                podium_score
-            };
+    //         let result = [
+    //             results[0].p1.to_lowercase(),
+    //             results[0].p2.to_lowercase(),
+    //             results[0].p3.to_lowercase(),
+    //         ];
+    //         let zipped: Vec<(String, String)> = bet
+    //             .iter()
+    //             .zip(result.iter())
+    //             .filter(|(b, _)| result.contains(b))
+    //             .map(|(b, r)| (b.to_owned(), r.to_owned()))
+    //             .collect();
+    //         let podium_score: i32 = zipped
+    //             .iter()
+    //             .map(|(b, r)| {
+    //                 if b == r {
+    //                     scoring_system.correct
+    //                 } else {
+    //                     scoring_system.podium
+    //                 }
+    //             })
+    //             .sum();
+    //         let boost_score = if podium_score == (3 * scoring_system.correct) {
+    //             podium_score + scoring_system.boost
+    //         } else {
+    //             podium_score
+    //         };
 
-            if b.fl.to_lowercase() == results[0].fl.to_lowercase() {
-                (
-                    b.race.clone(),
-                    bet,
-                    b.fl.clone(),
-                    boost_score + scoring_system.fl,
-                )
-            } else {
-                (b.race.clone(), bet, b.fl.clone(), boost_score)
-            }
-        })
-        .rev()
-        .take(amount)
-        .map(|b| {
-            format!(
-                "{}: {} {} {} {} {}",
-                b.0,
-                b.1[0].to_uppercase(),
-                b.1[1].to_uppercase(),
-                b.1[2].to_uppercase(),
-                b.2.to_uppercase(),
-                b.3
-            )
-        })
-        .collect();
+    //         if b.fl.to_lowercase() == results[0].fl.to_lowercase() {
+    //             (
+    //                 b.race.clone(),
+    //                 bet,
+    //                 b.fl.clone(),
+    //                 boost_score + scoring_system.fl,
+    //             )
+    //         } else {
+    //             (b.race.clone(), bet, b.fl.clone(), boost_score)
+    //         }
+    //     })
+    //     .rev()
+    //     .take(amount)
+    //     .map(|b| {
+    //         format!(
+    //             "{}: {} {} {} {} {}",
+    //             b.0,
+    //             b.1[0].to_uppercase(),
+    //             b.1[1].to_uppercase(),
+    //             b.1[2].to_uppercase(),
+    //             b.2.to_uppercase(),
+    //             b.3
+    //         )
+    //     })
+    //     .collect();
 
-    if user_bets.is_empty() {
-        None
-    } else {
-        Some(user_bets.join("\r\n"))
-    }
+    // if user_bets.is_empty() {
+    //     None
+    // } else {
+    //     Some(user_bets.join("\r\n"))
+    // }
+
+    Some(String::from("Coming soon..."))
 }
 
 pub fn score_bets(
@@ -278,6 +281,8 @@ pub fn score_bets(
                             b.p1.to_lowercase(),
                             b.p2.to_lowercase(),
                             b.p3.to_lowercase(),
+                            b.p4.to_lowercase(),
+                            b.p5.to_lowercase(),
                         ];
                         let results: Vec<_> = results
                             .iter()
@@ -292,6 +297,8 @@ pub fn score_bets(
                             results[0].p1.to_lowercase(),
                             results[0].p2.to_lowercase(),
                             results[0].p3.to_lowercase(),
+                            results[0].p4.to_lowercase(),
+                            results[0].p5.to_lowercase(),
                         ];
                         let zipped: Vec<(String, String)> = bet
                             .iter()
@@ -299,26 +306,32 @@ pub fn score_bets(
                             .filter(|(b, _)| result.contains(b))
                             .map(|(b, r)| (b.to_owned(), r.to_owned()))
                             .collect();
-                        let podium_score: i32 = zipped
+                        let base_score: i32 = zipped
                             .iter()
-                            .map(|(b, r)| {
-                                if b == r {
-                                    scoring_system.correct
+                            .enumerate()
+                            .map(|(i, (b, r))| {
+                                if i <= 2 && b == r {
+                                    scoring_system.pcorrect
+                                } else if i > 2 && b == r {
+                                    scoring_system.fcorrect
                                 } else {
-                                    scoring_system.podium
+                                    scoring_system.base
                                 }
                             })
                             .sum();
-                        let boost_score = if podium_score == (3 * scoring_system.correct) {
-                            podium_score + scoring_system.boost
-                        } else {
-                            podium_score
-                        };
+                        let podium_correct = bet[0..3]
+                            .iter()
+                            .zip(result[0..3].iter())
+                            .all(|(b, r)| b == r);
+                        let top_five_correct = base_score
+                            == (3 * scoring_system.pcorrect) + (2 * scoring_system.fcorrect);
 
-                        if b.fl.to_lowercase() == results[0].fl.to_lowercase() {
-                            boost_score + scoring_system.fl
+                        if top_five_correct {
+                            base_score + scoring_system.fboost
+                        } else if podium_correct {
+                            base_score + scoring_system.pboost
                         } else {
-                            boost_score
+                            base_score
                         }
                     })
                     .sum::<i32>(),
@@ -399,8 +412,8 @@ pub async fn bet(
         }
     }
 
-    if args.len() != 4 {
-        return String::from("The bet must contain 4 drivers: <1st> <2nd> <3rd> <fl>.");
+    if args.len() != 5 {
+        return String::from("The bet must contain 5 drivers: <1st> <2nd> <3rd> <4th> <5th>.");
     }
 
     if !valid_drivers(args, Arc::clone(&db)).await {
@@ -415,7 +428,8 @@ pub async fn bet(
             p1: args[0].to_lowercase(),
             p2: args[1].to_lowercase(),
             p3: args[2].to_lowercase(),
-            fl: args[3].to_lowercase(),
+            p4: args[3].to_lowercase(),
+            p5: args[4].to_lowercase(),
         },
         |b: &&Bet| {
             b.race.to_lowercase() == next_race.name.to_lowercase()
