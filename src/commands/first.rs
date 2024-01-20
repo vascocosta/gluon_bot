@@ -190,7 +190,7 @@ pub async fn first(
         Err(_) => return String::from("Set a time zone. Example: !timezone Europe/Berlin"),
     };
     let tz: Tz = match time_zones
-        .get(0)
+        .first()
         .unwrap_or(&TimeZone {
             nick: String::from(nick),
             name: String::from("Europe/Berlin"),

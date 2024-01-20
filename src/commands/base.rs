@@ -279,7 +279,7 @@ pub async fn time_zone(args: &[String], nick: &str, db: Arc<Mutex<Database>>) ->
         }],
     };
     let tz: Tz = match time_zones
-        .get(0)
+        .first()
         .unwrap_or(&TimeZone {
             nick: String::from(nick),
             name: String::from("Europe/Berlin"),

@@ -393,7 +393,7 @@ pub async fn bet(
             }
         }
 
-        let arg = args.get(0).unwrap_or(&String::from("")).to_lowercase();
+        let arg = args.first().unwrap_or(&String::from("")).to_lowercase();
 
         match arg.as_str() {
             "log" => match bets_log(nick, bets, results, ScoringSystem::from_options(options), 3) {

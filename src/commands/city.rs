@@ -1,4 +1,5 @@
 use crate::database::{CsvRecord, Database};
+use std::fmt::Write;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -68,18 +69,15 @@ pub async fn city(args: &[String], db: Arc<Mutex<Database>>) -> String {
     if !cities.is_empty() {
         let n = std::cmp::min(cities.len(), 5);
 
-        let output: String = cities
-            .iter()
-            .take(n)
-            .map(|cities| {
-                format!(
-                    "City: {} | Country: {} | Lat: {} Lon: {} | Population: {}\r\n",
-                    cities.city, cities.country, cities.lat, cities.lon, cities.population
-                )
-            })
-            .collect();
+        cities.iter().take(n).fold(String::new(), |mut output, c| {
+            let _ = write!(
+                output,
+                "City: {} | Country: {} | Lat: {} Lon: {} | Population: {}\r\n",
+                c.city, c.country, c.lat, c.lon, c.population
+            );
 
-        output
+            output
+        })
     } else {
         String::from("Could not find city.")
     }
