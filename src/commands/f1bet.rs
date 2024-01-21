@@ -412,7 +412,16 @@ pub async fn bet(
             },
             "last_points" | "lastpoints" => return points(true, options, db).await,
             "points" | "wbc" => return points(false, options, db).await,
-            _ => return String::from("Unknown sub command."),
+            _ => {
+                return bets_log(
+                    arg.as_str(),
+                    bets,
+                    results,
+                    ScoringSystem::from_options(options),
+                    1,
+                )
+                .unwrap_or(String::from("Could not find that user's bet."));
+            }
         }
     }
 
