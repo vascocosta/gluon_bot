@@ -413,14 +413,16 @@ pub async fn bet(
             "last_points" | "lastpoints" => return points(true, options, db).await,
             "points" | "wbc" => return points(false, options, db).await,
             _ => {
-                return bets_log(
-                    arg.as_str(),
-                    bets,
-                    results,
-                    ScoringSystem::from_options(options),
-                    1,
-                )
-                .unwrap_or(String::from("Could not find that user's bet."));
+                let bets: Vec<Bet> = match db.lock().await.select("bets", |_: &Bet| true) {
+                    Ok(bets_result) => match bets_result {
+                        Some(bets) => bets,
+                        None => return String::from("Could not find any bets."),
+                    },
+                    Err(_) => return String::from("Could not find any bets."),
+                };
+
+                return bets_log(&arg, bets, results, ScoringSystem::from_options(options), 1)
+                    .unwrap_or(String::from("Could not find that user's bet."));
             }
         }
     }
