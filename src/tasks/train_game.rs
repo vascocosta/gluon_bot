@@ -274,6 +274,14 @@ impl TrainService {
                 return;
             }
 
+            board(
+                &self.schedule.number.to_string(),
+                station,
+                &[self.schedule.number.to_string()],
+                self.db.clone(),
+            )
+            .await;
+
             if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
                 station.to_owned(),
                 format!(
@@ -286,6 +294,8 @@ impl TrainService {
 
             time::sleep(Duration::from_secs(STOP_TIME * 60)).await;
             self.board(self.schedule.number, station).await;
+
+            deboard(&self.schedule.number.to_string(), self.db.clone()).await;
 
             if index != route.len() - 1 {
                 if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
@@ -320,6 +330,23 @@ impl TrainService {
 }
 
 pub async fn board(nick: &str, station: &str, args: &[String], db: Arc<Mutex<Database>>) -> String {
+    let number = args
+        .first()
+        .unwrap_or(&String::from(""))
+        .parse()
+        .unwrap_or(0);
+
+    if !db
+        .lock()
+        .await
+        .select("train_boardings", |b: &Boarding| {
+            b.nick.to_lowercase().as_str() == number.to_string()
+        })
+        .is_ok_and(|f| f.is_some())
+    {
+        return String::from("The train you're trying to board isn't on this station.");
+    }
+
     if db
         .lock()
         .await
@@ -328,14 +355,9 @@ pub async fn board(nick: &str, station: &str, args: &[String], db: Arc<Mutex<Dat
         })
         .is_ok_and(|f| f.is_some())
     {
-        return String::from("You've already boarded or scheduled a boarding.");
+        return String::from("You've already boarded.");
     }
 
-    let number = args
-        .first()
-        .unwrap_or(&String::from("7001"))
-        .parse()
-        .unwrap_or(7001);
     let boarding = Boarding {
         nick: nick.to_lowercase(),
         number,
@@ -349,7 +371,15 @@ pub async fn board(nick: &str, station: &str, args: &[String], db: Arc<Mutex<Dat
         })
         .unwrap_or_default();
 
-    format!("You've scheduled a boarding to train {}.", number)
+    format!("You boarded train {}.", number)
+}
+
+pub async fn deboard(nick: &str, db: Arc<Mutex<Database>>) {
+    if let Err(error) = db.lock().await.delete("train_boardings", |b: &&Boarding| {
+        b.nick.to_lowercase() == nick.to_lowercase()
+    }) {
+        eprintln!("{error}");
+    }
 }
 
 pub async fn schedules(db: Arc<Mutex<Database>>) -> String {
