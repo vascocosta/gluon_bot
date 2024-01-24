@@ -344,7 +344,7 @@ pub async fn board(nick: &str, station: &str, args: &[String], db: Arc<Mutex<Dat
         })
         .is_ok_and(|f| f.is_some())
     {
-        return String::from("The train you're trying to board isn't on this station.");
+        return String::from("That train isn't on this station.");
     }
 
     if db
