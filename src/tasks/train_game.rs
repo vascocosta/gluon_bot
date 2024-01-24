@@ -342,8 +342,7 @@ pub async fn board(nick: &str, station: &str, args: &[String], db: Arc<Mutex<Dat
         .select("train_boardings", |b: &Boarding| {
             b.nick.to_lowercase().as_str() == number.to_string()
         })
-        .is_ok_and(|f| f.is_some())
-        && nick != number.to_string()
+        .is_ok_and(|f| f.is_some() || f.is_none() && nick == number.to_string())
     {
         return String::from("That train isn't on this station.");
     }
