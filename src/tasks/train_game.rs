@@ -346,15 +346,15 @@ pub async fn board(nick: &str, station: &str, args: &[String], db: Arc<Mutex<Dat
         return String::from("That train isn't on this station.");
     }
 
-    if db
-        .lock()
-        .await
-        .select("train_boardings", |b: &Boarding| {
-            b.nick.to_lowercase() == nick.to_lowercase()
-        })
-        .is_ok_and(|f| f.is_some())
-    {
-        return String::from("You've already boarded.");
+    if let Ok(Some(boardings)) = db.lock().await.select("train_boardings", |b: &Boarding| {
+        b.nick.to_lowercase() == nick.to_lowercase()
+    }) {
+        if let Some(boarding) = boardings.first() {
+            return format!(
+                "Cannot board {}! You are currently inside train {}.",
+                number, boarding.number
+            );
+        }
     }
 
     let boarding = Boarding {
