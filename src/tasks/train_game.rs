@@ -293,9 +293,8 @@ impl TrainService {
             }
 
             time::sleep(Duration::from_secs(STOP_TIME * 60)).await;
-            self.board(self.schedule.number, station).await;
-
             deboard(&self.schedule.number.to_string(), self.db.clone()).await;
+            self.board(self.schedule.number, station).await;
 
             if index != route.len() - 1 {
                 if let Err(error) = self.client.lock().await.send(Command::PRIVMSG(
