@@ -106,7 +106,8 @@ impl CsvRecord for Boarding {
 
 pub struct TrainGame {
     token: CancellationToken,
-    services: Vec<TrainService>,
+    client: Arc<Mutex<Client>>,
+    db: Arc<Mutex<Database>>,
 }
 
 impl TrainGame {
@@ -123,27 +124,25 @@ impl TrainGame {
             eprintln!("{error}");
         }
 
-        let schedules = db
-            .lock()
-            .await
-            .select("train_schedules", |_: &TrainSchedule| true)
-            .unwrap_or_default()
-            .unwrap_or_default();
-
-        Self {
-            token,
-            services: schedules
-                .into_iter()
-                .map(|s| TrainService::new(client.clone(), db.clone(), s, &[]))
-                .collect(),
-        }
+        Self { token, client, db }
     }
 
     pub async fn run(&self) {
         while !self.token.is_cancelled() {
+            let schedules = self
+                .db
+                .lock()
+                .await
+                .select("train_schedules", |_: &TrainSchedule| true)
+                .unwrap_or_default()
+                .unwrap_or_default();
+            let services: Vec<TrainService> = schedules
+                .into_iter()
+                .map(|s| TrainService::new(self.client.clone(), self.db.clone(), s, &[]))
+                .collect();
             let now = Utc::now();
 
-            for service in &self.services {
+            for service in &services {
                 let mut service = service.clone();
 
                 if now.hour() == service.schedule.hour && now.minute() == service.schedule.minute {
