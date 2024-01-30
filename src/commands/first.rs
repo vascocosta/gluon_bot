@@ -1,5 +1,5 @@
 use crate::database::{CsvRecord, Database};
-use chrono::{DateTime, Datelike, Days, Timelike, Utc, Weekday};
+use chrono::{DateTime, Datelike, Days, Duration, Timelike, Utc, Weekday};
 use chrono_tz::Tz;
 use irc::{client::Client, proto::Command};
 use rand::prelude::*;
@@ -79,6 +79,47 @@ impl CsvRecord for TimeZone {
     fn to_fields(&self) -> Vec<String> {
         vec![self.nick.clone(), self.name.clone()]
     }
+}
+
+fn open_time(options: &HashMap<String, String>, utc_now: DateTime<Utc>, next: bool) -> (u32, u32) {
+    let open_hour = match options.get("first_open_hour") {
+        Some(open_hour) => match open_hour.parse() {
+            Ok(open_hour) => match open_hour {
+                0..=23 => open_hour,
+                _ => DEFAULT_OPEN_HOUR,
+            },
+            Err(_) => {
+                let mut rng = if next {
+                    StdRng::seed_from_u64((utc_now + Duration::days(1)).day() as u64)
+                } else {
+                    StdRng::seed_from_u64(utc_now.day() as u64)
+                };
+
+                rng.gen_range(RAND_OPEN_HOUR)
+            }
+        },
+        None => 5,
+    };
+    let open_min = match options.get("first_open_min") {
+        Some(open_min) => match open_min.parse() {
+            Ok(open_min) => match open_min {
+                0..=59 => open_min,
+                _ => DEFAULT_OPEN_MIN,
+            },
+            Err(_) => {
+                let mut rng = if next {
+                    StdRng::seed_from_u64((utc_now + Duration::days(1)).day() as u64)
+                } else {
+                    StdRng::seed_from_u64(utc_now.day() as u64)
+                };
+
+                rng.gen_range(RAND_OPEN_MIN)
+            }
+        },
+        None => 30,
+    };
+
+    (open_hour, open_min)
 }
 
 async fn show_results(
@@ -204,34 +245,12 @@ pub async fn first(
         }
     };
     let tz_now = utc_now.with_timezone(&tz);
-    let open_hour = match options.get("first_open_hour") {
-        Some(open_hour) => match open_hour.parse() {
-            Ok(open_hour) => match open_hour {
-                0..=23 => open_hour,
-                _ => DEFAULT_OPEN_HOUR,
-            },
-            Err(_) => {
-                let mut rng = StdRng::seed_from_u64(utc_now.day() as u64);
-
-                rng.gen_range(RAND_OPEN_HOUR)
-            }
-        },
-        None => 5,
-    };
-    let open_min = match options.get("first_open_min") {
-        Some(open_min) => match open_min.parse() {
-            Ok(open_min) => match open_min {
-                0..=59 => open_min,
-                _ => DEFAULT_OPEN_MIN,
-            },
-            Err(_) => {
-                let mut rng = StdRng::seed_from_u64(utc_now.day() as u64);
-
-                rng.gen_range(RAND_OPEN_MIN)
-            }
-        },
-        None => 30,
-    };
+    let open_time_today = open_time(options, utc_now, false);
+    let open_hour = open_time_today.0;
+    let open_min = open_time_today.1;
+    let open_time_next = open_time(options, utc_now, true);
+    let open_hour_next = open_time_next.0;
+    let open_min_next = open_time_next.1;
 
     if tz_now.hour() < open_hour || (tz_now.hour() == open_hour && tz_now.minute() < open_min) {
         return format!(
@@ -247,7 +266,10 @@ pub async fn first(
     }) {
         Ok(result) => {
             if result.is_some() && !result.unwrap().is_empty() {
-                return String::from("You have already played the game today.");
+                return format!(
+                    "STATUS played (today opened at {:0>2}H{:0>2} {} | tomorrow opens at {:0>2}H{:0>2} {})",
+                    open_hour, open_min, tz, open_hour_next, open_min_next, tz
+                );
             }
         }
         Err(_) => return String::from("Could not check your time."),
@@ -285,8 +307,8 @@ pub async fn first(
     show_results(&mut first_results, Some(nick), target, client).await;
 
     format!(
-        "STATUS open (opened at {:0>2}H{:0>2} {})",
-        open_hour, open_min, tz
+        "STATUS open (today opened at {:0>2}H{:0>2} {} | tomorrow opens at {:0>2}H{:0>2} {})",
+        open_hour, open_min, tz, open_hour_next, open_min_next, tz
     )
 }
 
