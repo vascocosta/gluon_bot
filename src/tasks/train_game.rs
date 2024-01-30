@@ -1,5 +1,6 @@
 use crate::database::{CsvRecord, Database};
 use chrono::DateTime;
+use chrono::Datelike;
 use chrono::Timelike;
 use chrono::Utc;
 use irc::client::prelude::Command;
@@ -52,6 +53,48 @@ impl CsvRecord for TrainSchedule {
             self.score.to_string(),
             self.route.join(":"),
         ]
+    }
+}
+
+struct RandTrainScheduleIter {
+    index: u32,
+}
+
+impl RandTrainScheduleIter {
+    fn new() -> Self {
+        Self { index: 0 }
+    }
+}
+
+impl Iterator for RandTrainScheduleIter {
+    type Item = TrainSchedule;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index < u32::MAX {
+            let number = (6001 + self.index) as usize;
+            let name = String::from("Random Train");
+            let hour =
+                StdRng::seed_from_u64((Utc::now().day() + self.index) as u64).gen_range(0..23);
+            let minute =
+                StdRng::seed_from_u64((Utc::now().day() + self.index) as u64).gen_range(0..59);
+            let delta = 10;
+            let score = 10;
+            let route = vec![String::from("#geeks"), String::from("#nerds")];
+
+            self.index += 1;
+
+            Some(TrainSchedule {
+                number,
+                name,
+                hour,
+                minute,
+                delta,
+                score,
+                route,
+            })
+        } else {
+            None
+        }
     }
 }
 
