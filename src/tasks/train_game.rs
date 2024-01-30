@@ -71,7 +71,7 @@ impl Iterator for RandTrainScheduleIter {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < u32::MAX {
-            let number = (6001 + self.index) as usize;
+            let number = 6000;
             let name = String::from("Random Train");
             let hour =
                 StdRng::seed_from_u64((Utc::now().day() + self.index) as u64).gen_range(0..23);
@@ -172,13 +172,35 @@ impl TrainGame {
 
     pub async fn run(&self) {
         while !self.token.is_cancelled() {
-            let schedules = self
+            let mut rand_schedule_iter = RandTrainScheduleIter::new();
+            let schedules: Vec<TrainSchedule> = self
                 .db
                 .lock()
                 .await
                 .select("train_schedules", |_: &TrainSchedule| true)
                 .unwrap_or_default()
-                .unwrap_or_default();
+                .unwrap_or_default()
+                .into_iter()
+                .map(|s| {
+                    if (6000..7000).contains(&s.number) {
+                        if let Some(rand_schedule) = rand_schedule_iter.next() {
+                            TrainSchedule {
+                                number: s.number,
+                                name: s.name,
+                                hour: rand_schedule.hour,
+                                minute: rand_schedule.minute,
+                                delta: s.delta,
+                                score: s.score,
+                                route: s.route,
+                            }
+                        } else {
+                            s
+                        }
+                    } else {
+                        s
+                    }
+                })
+                .collect();
             let services: Vec<TrainService> = schedules
                 .into_iter()
                 .map(|s| TrainService::new(self.client.clone(), self.db.clone(), s, &[]))
