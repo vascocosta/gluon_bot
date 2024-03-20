@@ -65,19 +65,17 @@ impl CsvRecord for TimeZone {
 }
 
 pub async fn next(args: &[String], nick: &str, target: &str, db: Arc<Mutex<Database>>) -> String {
+    let search = &args.join(" ").to_lowercase();
     let mut events: Vec<Event> = match db.lock().await.select("events", |e: &Event| {
         e.datetime > Utc::now()
             && e.channel.to_lowercase() == target.to_lowercase()
-            && (e
-                .category
-                .to_lowercase()
-                .contains(&args.join(" ").to_lowercase())
-                || e.description
-                    .to_lowercase()
-                    .contains(&args.join(" ").to_lowercase())
-                || e.tags
-                    .to_lowercase()
-                    .contains(&args.join(" ").to_lowercase()))
+            && (e.name.to_lowercase().contains(search)
+                || e.description.to_lowercase().contains(search)
+                || e.tags.to_lowercase().contains(search)
+                || (e.tags.to_lowercase().contains(search)
+                    && e.name.to_lowercase().contains(search))
+                || (e.tags.to_lowercase().contains(search)
+                    && e.description.to_lowercase().contains(search)))
     }) {
         Ok(events_result) => match events_result {
             Some(events) => events,
