@@ -69,13 +69,9 @@ pub async fn next(args: &[String], nick: &str, target: &str, db: Arc<Mutex<Datab
     let mut events: Vec<Event> = match db.lock().await.select("events", |e: &Event| {
         e.datetime > Utc::now()
             && e.channel.to_lowercase() == target.to_lowercase()
-            && (e.name.to_lowercase().contains(search)
+            && (e.category.to_lowercase().contains(search)
                 || e.description.to_lowercase().contains(search)
-                || e.tags.to_lowercase().contains(search)
-                || (e.tags.to_lowercase().contains(search)
-                    && e.name.to_lowercase().contains(search))
-                || (e.tags.to_lowercase().contains(search)
-                    && e.description.to_lowercase().contains(search)))
+                || e.tags.to_lowercase().contains(search))
     }) {
         Ok(events_result) => match events_result {
             Some(events) => events,
