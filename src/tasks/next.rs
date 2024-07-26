@@ -52,6 +52,24 @@ impl CsvRecord for Event {
 }
 
 #[derive(PartialEq)]
+pub struct Interest {
+    pub tag: String,
+    pub mentions: String,
+}
+
+impl CsvRecord for Interest {
+    fn from_fields(fields: &[String]) -> Self {
+        Self {
+            tag: fields[0].clone(),
+            mentions: fields[1].clone(),
+        }
+    }
+    fn to_fields(&self) -> Vec<String> {
+        vec![self.tag.clone(), self.mentions.clone()]
+    }
+}
+
+#[derive(PartialEq)]
 pub struct Notification {
     pub channel: String,
     pub mentions: String,
@@ -128,6 +146,24 @@ pub async fn next(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>, token: C
                         if let Err(error) = client.lock().await.send(Command::PRIVMSG(
                             event.channel.clone(),
                             notifications[0].mentions.clone(),
+                        )) {
+                            eprintln!("{error}");
+                        }
+                    }
+
+                    let interests: Option<Vec<Interest>> = match db
+                        .lock()
+                        .await
+                        .select("interests", |i: &Interest| event.tags.contains(&i.tag))
+                    {
+                        Ok(interests) => interests,
+                        Err(_) => None,
+                    };
+
+                    if let Some(interests) = interests {
+                        if let Err(error) = client.lock().await.send(Command::PRIVMSG(
+                            event.channel.clone(),
+                            interests[0].mentions.clone(),
                         )) {
                             eprintln!("{error}");
                         }
