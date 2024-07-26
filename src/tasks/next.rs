@@ -5,6 +5,8 @@ use irc::client::prelude::Command;
 use irc::client::Client;
 use itertools::Itertools;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashSet;
+use std::fmt::format;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -53,19 +55,19 @@ impl CsvRecord for Event {
 
 #[derive(PartialEq)]
 pub struct Interest {
-    pub tag: String,
-    pub mentions: String,
+    pub nick: String,
+    pub tags: String,
 }
 
 impl CsvRecord for Interest {
     fn from_fields(fields: &[String]) -> Self {
         Self {
-            tag: fields[0].clone(),
-            mentions: fields[1].clone(),
+            nick: fields[0].clone(),
+            tags: fields[1].clone(),
         }
     }
     fn to_fields(&self) -> Vec<String> {
-        vec![self.tag.clone(), self.mentions.clone()]
+        vec![self.nick.clone(), self.tags.clone()]
     }
 }
 
@@ -151,21 +153,31 @@ pub async fn next(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>, token: C
                         }
                     }
 
-                    let interests: Option<Vec<Interest>> = match db
-                        .lock()
-                        .await
-                        .select("interests", |i: &Interest| event.tags.contains(&i.tag))
-                    {
-                        Ok(interests) => interests,
-                        Err(_) => None,
-                    };
+                    let interests: Option<Vec<Interest>> =
+                        match db.lock().await.select("interests", |_| true) {
+                            Ok(interests) => interests,
+                            Err(_) => None,
+                        };
 
                     if let Some(interests) = interests {
-                        if let Err(error) = client.lock().await.send(Command::PRIVMSG(
-                            event.channel.clone(),
-                            interests[0].mentions.clone(),
-                        )) {
-                            eprintln!("{error}");
+                        let mut mentions: String = String::new();
+                        let event_tags_set: HashSet<&str> = event.tags.split_whitespace().collect();
+
+                        for i in interests {
+                            let user_tags_set: HashSet<&str> = i.tags.split_whitespace().collect();
+                            if event_tags_set.intersection(&user_tags_set).next().is_some() {
+                                mentions = format!("{} {}", mentions, i.nick);
+                            }
+                        }
+
+                        if !mentions.is_empty() {
+                            if let Err(error) = client
+                                .lock()
+                                .await
+                                .send(Command::PRIVMSG(event.channel.clone(), mentions))
+                            {
+                                eprintln!("{error}");
+                            }
                         }
                     }
                 }
