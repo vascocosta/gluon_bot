@@ -70,25 +70,6 @@ impl CsvRecord for Interest {
     }
 }
 
-#[derive(PartialEq)]
-pub struct Notification {
-    pub channel: String,
-    pub mentions: String,
-}
-
-impl CsvRecord for Notification {
-    fn from_fields(fields: &[String]) -> Self {
-        Self {
-            channel: fields[0].clone(),
-            mentions: fields[1].clone(),
-        }
-    }
-
-    fn to_fields(&self) -> Vec<String> {
-        vec![self.channel.clone(), self.mentions.clone()]
-    }
-}
-
 fn calculate_hash<T: Hash>(t: &T) -> u64 {
     let mut s = DefaultHasher::new();
 

@@ -77,10 +77,11 @@ impl<'a> BotCommand<'a> {
             "hello" => base::hello(&self.nick).await,
             "help" | "h" | "commands" => base::help().await,
             "imdb" | "omdb" => omdb::omdb(&self.args, self.options).await,
-            "interests" | "interested" | "i" => next::interests(&self.args, &self.nick, db).await,
+            "interests" | "interested" | "i" | "notify" => {
+                next::interests(&self.args, &self.nick, db).await
+            }
             "news" => news::news(&self.args, &self.target, client, self.options).await,
             "next" | "n" => next::next(&self.args, &self.nick, &self.target, db).await,
-            "notify" => next::notify(&self.nick, &self.target, db).await,
             "ping" => base::ping().await,
             "points" | "wbc" => f1bet::points(false, self.options, db).await,
             "quote" => base::quote(&self.args, &self.target, db).await,
