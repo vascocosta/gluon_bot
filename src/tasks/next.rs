@@ -6,7 +6,6 @@ use irc::client::Client;
 use itertools::Itertools;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
-use std::fmt::format;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -136,23 +135,6 @@ pub async fn next(client: Arc<Mutex<Client>>, db: Arc<Mutex<Database>>, token: C
                 }
 
                 if event.notify {
-                    let notifications: Option<Vec<Notification>> =
-                        match db.lock().await.select("notifications", |n: &Notification| {
-                            n.channel.to_lowercase() == event.channel.clone()
-                        }) {
-                            Ok(notifications) => notifications,
-                            Err(_) => None,
-                        };
-
-                    if let Some(notifications) = notifications {
-                        if let Err(error) = client.lock().await.send(Command::PRIVMSG(
-                            event.channel.clone(),
-                            notifications[0].mentions.clone(),
-                        )) {
-                            eprintln!("{error}");
-                        }
-                    }
-
                     let interests: Option<Vec<Interest>> =
                         match db.lock().await.select("interests", |_| true) {
                             Ok(interests) => interests,

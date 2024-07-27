@@ -1,5 +1,5 @@
 use crate::database::{CsvRecord, Database};
-use crate::tasks::next::Notification;
+use crate::tasks::next::{Interest, Notification};
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
@@ -121,6 +121,32 @@ pub async fn next(args: &[String], nick: &str, target: &str, db: Arc<Mutex<Datab
         )
     } else {
         String::from("Could not find next event.")
+    }
+}
+
+pub async fn interests(args: &[String], nick: &str, db: Arc<Mutex<Database>>) -> String {
+    if args.is_empty() {
+        match db.lock().await.select("interests", |i: &Interest| {
+            i.nick.to_lowercase() == nick.to_lowercase()
+        }) {
+            Ok(Some(interests)) => return interests[0].tags.clone(),
+            _ => return String::from("Could not get interests."),
+        };
+    }
+
+    let interest = Interest {
+        nick: nick.to_string(),
+        tags: args.join(" "),
+    };
+
+    match db
+        .lock()
+        .await
+        .update("interests", interest, |i: &&Interest| {
+            i.nick.to_lowercase() == nick.to_lowercase()
+        }) {
+        Ok(_) => String::from("Your interests were updated."),
+        Err(_) => String::from("Could not update your interests."),
     }
 }
 
