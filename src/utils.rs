@@ -35,7 +35,7 @@ struct VideoStatistics {
 struct Video {
     snippet: VideoSnippet,
     content_details: VideoContentDetails,
-    video_statistics: VideoStatistics,
+    statistics: VideoStatistics,
 }
 
 #[derive(Deserialize)]
@@ -105,10 +105,10 @@ pub async fn youtube_data(api_key: &str, video_id: &str) -> Result<Option<String
         "Title: {}\r\nDuration: {} | Views: {} | Comments: {} Likes: {} | Dislikes: {}",
         video.snippet.title,
         video.content_details.duration,
-        video.video_statistics.view_count,
-        video.video_statistics.comment_count,
-        video.video_statistics.like_count,
-        video.video_statistics.dislike_count
+        video.statistics.view_count,
+        video.statistics.comment_count,
+        video.statistics.like_count,
+        video.statistics.dislike_count
     );
 
     Ok(Some(output))
