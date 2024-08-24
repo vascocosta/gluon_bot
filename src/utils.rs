@@ -26,7 +26,6 @@ struct VideoContentDetails {
 struct VideoStatistics {
     view_count: String,
     like_count: String,
-    dislike_count: String,
     comment_count: String,
 }
 
@@ -102,13 +101,12 @@ pub async fn youtube_data(api_key: &str, video_id: &str) -> Result<Option<String
         .ok_or("Could not fetch video data")?;
 
     let output = format!(
-        "Title: {}\r\nDuration: {} | Views: {} | Comments: {} Likes: {} | Dislikes: {}",
+        "Title: {}\r\nDuration: {} | Views: {} | Comments: {} Likes: {}",
         video.snippet.title,
         video.content_details.duration,
         video.statistics.view_count,
         video.statistics.comment_count,
         video.statistics.like_count,
-        video.statistics.dislike_count
     );
 
     Ok(Some(output))
