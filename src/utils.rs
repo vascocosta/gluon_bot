@@ -23,9 +23,19 @@ struct VideoContentDetails {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct VideoStatistics {
+    view_count: String,
+    like_count: String,
+    dislike_count: String,
+    comment_count: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct Video {
     snippet: VideoSnippet,
     content_details: VideoContentDetails,
+    video_statistics: VideoStatistics,
 }
 
 #[derive(Deserialize)]
@@ -92,8 +102,13 @@ pub async fn youtube_data(api_key: &str, video_id: &str) -> Result<Option<String
         .ok_or("Could not fetch video data")?;
 
     let output = format!(
-        "Title: {}\r\nDuration: {}",
-        video.snippet.title, video.content_details.duration
+        "Title: {}\r\nDuration: {} | Views: {} | Comments: {} Likes: {} | Dislikes: {}",
+        video.snippet.title,
+        video.content_details.duration,
+        video.video_statistics.view_count,
+        video.video_statistics.comment_count,
+        video.video_statistics.like_count,
+        video.video_statistics.dislike_count
     );
 
     Ok(Some(output))
