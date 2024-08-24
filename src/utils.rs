@@ -18,15 +18,15 @@ struct VideoSnippet {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct VideoContentDetails {
-    duration: String,
+    duration: Option<String>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct VideoStatistics {
-    view_count: String,
-    like_count: String,
-    comment_count: String,
+    view_count: Option<String>,
+    like_count: Option<String>,
+    comment_count: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -103,10 +103,26 @@ pub async fn youtube_data(api_key: &str, video_id: &str) -> Result<Option<String
     let output = format!(
         "Title: {}\r\nDuration: {} | Views: {} | Comments: {} Likes: {}",
         video.snippet.title,
-        video.content_details.duration,
-        video.statistics.view_count,
-        video.statistics.comment_count,
-        video.statistics.like_count,
+        video
+            .content_details
+            .duration
+            .as_ref()
+            .unwrap_or(&String::from("NA")),
+        video
+            .statistics
+            .view_count
+            .as_ref()
+            .unwrap_or(&String::from("NA")),
+        video
+            .statistics
+            .comment_count
+            .as_ref()
+            .unwrap_or(&String::from("NA")),
+        video
+            .statistics
+            .like_count
+            .as_ref()
+            .unwrap_or(&String::from("NA")),
     );
 
     Ok(Some(output))
