@@ -84,7 +84,7 @@ pub fn upper_initials(text: &str) -> String {
 }
 
 pub async fn youtube_data(api_key: &str, video_id: &str) -> Result<Option<String>, Box<dyn Error>> {
-    let url = format!("https://www.googleapis.com/youtube/v3/videos?part=snippet&part=contentDetails&id={}&key={}", video_id, api_key);
+    let url = format!("https://www.googleapis.com/youtube/v3/videos?part=snippet&part=contentDetails&part=statistics&id={}&key={}", video_id, api_key);
 
     let client = Client::builder()
         .timeout(Duration::from_secs(TIMEOUT))
