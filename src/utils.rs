@@ -99,17 +99,23 @@ pub fn extract_video_id(url: &str) -> Option<String> {
     let parsed_url = url::Url::parse(url).ok()?;
 
     match parsed_url.domain()? {
-        "www.youtube.com" | "youtube.com" => match parsed_url.path() {
-            "/watch" => parsed_url.query_pairs().find_map(|(key, value)| {
-                if key == "v" {
-                    Some(value.into_owned())
-                } else {
-                    None
-                }
-            }),
-            "/shorts" => parsed_url.path_segments()?.nth(1).map(|s| s.to_string()),
-            _ => None,
-        },
+        "www.youtube.com" | "youtube.com" => {
+            if parsed_url.path().to_lowercase().contains("/watch") {
+                parsed_url.query_pairs().find_map(|(key, value)| {
+                    if key == "v" {
+                        Some(value.into_owned())
+                    } else {
+                        None
+                    }
+                })
+            } else if parsed_url.path().to_lowercase().contains("/shorts")
+                || parsed_url.path().to_lowercase().contains("/live")
+            {
+                parsed_url.path_segments()?.nth(1).map(|s| s.to_string())
+            } else {
+                None
+            }
+        }
         "youtu.be" => parsed_url.path_segments()?.next().map(|s| s.to_string()),
         _ => None,
     }

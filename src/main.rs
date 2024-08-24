@@ -209,7 +209,9 @@ async fn main() {
                     let options = Arc::clone(&options);
                     task::spawn(async move {
                         if let Some(url) = utils::find_url(&message) {
-                            if url.to_lowercase().contains("youtube.com") {
+                            if url.to_lowercase().contains("youtube.com")
+                                || url.to_lowercase().contains("youtu.be")
+                            {
                                 if let Some(video_id) = utils::extract_video_id(url) {
                                     if let Ok(Some(video_data)) = utils::youtube_data(
                                         options.get("youtube_api_key").unwrap_or(&String::from("")),
