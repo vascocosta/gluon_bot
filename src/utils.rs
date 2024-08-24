@@ -33,8 +33,8 @@ struct VideoStatistics {
 #[serde(rename_all = "camelCase")]
 struct Video {
     snippet: VideoSnippet,
-    content_details: VideoContentDetails,
-    statistics: VideoStatistics,
+    content_details: Option<VideoContentDetails>,
+    statistics: Option<VideoStatistics>,
 }
 
 #[derive(Deserialize)]
@@ -100,29 +100,31 @@ pub async fn youtube_data(api_key: &str, video_id: &str) -> Result<Option<String
         .first()
         .ok_or("Could not fetch video data")?;
 
+    let na = String::from("N/A");
+    let duration = if let Some(content_details) = &video.content_details {
+        content_details.duration.as_ref().unwrap_or(&na)
+    } else {
+        &String::from("N/A")
+    };
+    let view_count = if let Some(statistics) = &video.statistics {
+        statistics.view_count.as_ref().unwrap_or(&na)
+    } else {
+        &String::from("N/A")
+    };
+    let comment_count = if let Some(statistics) = &video.statistics {
+        statistics.comment_count.as_ref().unwrap_or(&na)
+    } else {
+        &String::from("N/A")
+    };
+    let like_count = if let Some(statistics) = &video.statistics {
+        statistics.like_count.as_ref().unwrap_or(&na)
+    } else {
+        &String::from("N/A")
+    };
+
     let output = format!(
         "Title: {}\r\nDuration: {} | Views: {} | Comments: {} Likes: {}",
-        video.snippet.title,
-        video
-            .content_details
-            .duration
-            .as_ref()
-            .unwrap_or(&String::from("NA")),
-        video
-            .statistics
-            .view_count
-            .as_ref()
-            .unwrap_or(&String::from("NA")),
-        video
-            .statistics
-            .comment_count
-            .as_ref()
-            .unwrap_or(&String::from("NA")),
-        video
-            .statistics
-            .like_count
-            .as_ref()
-            .unwrap_or(&String::from("NA")),
+        video.snippet.title, duration, view_count, comment_count, like_count
     );
 
     Ok(Some(output))
