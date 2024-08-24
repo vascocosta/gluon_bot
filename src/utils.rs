@@ -10,22 +10,26 @@ const USER_AGENT_STRING: &str =
     "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0";
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct VideoSnippet {
     title: String,
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct VideoContentDetails {
     duration: String,
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct Video {
     snippet: VideoSnippet,
-    contentDetails: VideoContentDetails,
+    content_details: VideoContentDetails,
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ApiResponse {
     items: Vec<Video>,
 }
@@ -89,7 +93,7 @@ pub async fn youtube_data(api_key: &str, video_id: &str) -> Result<Option<String
 
     let output = format!(
         "Title: {}\r\nDuration: {}",
-        video.snippet.title, video.contentDetails.duration
+        video.snippet.title, video.content_details.duration
     );
 
     Ok(Some(output))
