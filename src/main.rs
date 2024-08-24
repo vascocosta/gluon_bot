@@ -206,9 +206,24 @@ async fn main() {
                         }
                     });
                 } else {
+                    let options = Arc::clone(&options);
                     task::spawn(async move {
                         if let Some(url) = utils::find_url(&message) {
-                            if let Ok(Some(title)) = utils::find_title(url).await {
+                            if url.to_lowercase().contains("youtube.com") {
+                                if let Some(video_id) = utils::extract_video_id(url) {
+                                    if let Ok(Some(video_data)) = utils::youtube_data(
+                                        options.get("youtube_api_key").unwrap_or(&String::from("")),
+                                        &video_id,
+                                    )
+                                    .await
+                                    {
+                                        if let Err(error) = sender.send_privmsg(&target, video_data)
+                                        {
+                                            eprint!("{error}");
+                                        }
+                                    }
+                                }
+                            } else if let Ok(Some(title)) = utils::find_title(url).await {
                                 if let Err(error) = sender.send_privmsg(&target, title) {
                                     eprint!("{error}");
                                 }
