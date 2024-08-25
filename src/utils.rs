@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use regex::Regex;
 use reqwest::{header::USER_AGENT, Client};
 use scraper::{Html, Selector};
@@ -15,7 +15,7 @@ const USER_AGENT_STRING: &str =
 #[serde(rename_all = "camelCase")]
 struct VideoSnippet {
     title: String,
-    published_at: Option<NaiveDateTime>,
+    published_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Deserialize)]
@@ -128,7 +128,7 @@ pub async fn youtube_data(api_key: &str, video_id: &str) -> Result<Option<String
     };
 
     Ok(Some(format!(
-        "{}\r\nPublished: {} | Duration: {} | Views: {} | Comments: {} Likes: {}",
+        "{}\r\n{} | {} | 👁 {} | 🗨 {} | 👍 {}",
         video.snippet.title,
         published_at.format("%d/%m/%Y"),
         duration.chars().skip(2).collect::<String>().to_lowercase(),
