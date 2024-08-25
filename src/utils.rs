@@ -1,3 +1,4 @@
+use chrono::NaiveDateTime;
 use regex::Regex;
 use reqwest::{header::USER_AGENT, Client};
 use scraper::{Html, Selector};
@@ -6,6 +7,7 @@ use std::error::Error;
 use tokio::time::Duration;
 
 const TIMEOUT: u64 = 10;
+const YOUTUBE_API_BASE: &str = "https://www.googleapis.com/youtube/v3";
 const USER_AGENT_STRING: &str =
     "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0";
 
@@ -13,6 +15,7 @@ const USER_AGENT_STRING: &str =
 #[serde(rename_all = "camelCase")]
 struct VideoSnippet {
     title: String,
+    published_at: Option<NaiveDateTime>,
 }
 
 #[derive(Deserialize)]
@@ -83,8 +86,10 @@ pub fn upper_initials(text: &str) -> String {
 }
 
 pub async fn youtube_data(api_key: &str, video_id: &str) -> Result<Option<String>, Box<dyn Error>> {
-    let url = format!("https://www.googleapis.com/youtube/v3/videos?part=snippet&part=contentDetails&part=statistics&id={}&key={}", video_id, api_key);
-
+    let url = format!(
+        "{}/videos?part=snippet&part=contentDetails&part=statistics&id={}&key={}",
+        YOUTUBE_API_BASE, video_id, api_key
+    );
     let client = Client::builder()
         .timeout(Duration::from_secs(TIMEOUT))
         .build()?;
@@ -94,46 +99,49 @@ pub async fn youtube_data(api_key: &str, video_id: &str) -> Result<Option<String
         .send()
         .await?;
     let api_response: ApiResponse = response.json().await?;
-
     let video = api_response
         .items
         .first()
-        .ok_or("Could not fetch video data")?;
+        .ok_or("Could not fetch video data.")?;
 
-    let na = String::from("N/A");
+    let not_available = String::from("N/A");
+    let published_at = video.snippet.published_at.unwrap_or_default();
     let duration = if let Some(content_details) = &video.content_details {
-        content_details.duration.as_ref().unwrap_or(&na)
+        content_details.duration.as_ref().unwrap_or(&not_available)
     } else {
-        &String::from("N/A")
+        &not_available
     };
     let view_count = if let Some(statistics) = &video.statistics {
-        statistics.view_count.as_ref().unwrap_or(&na)
+        statistics.view_count.as_ref().unwrap_or(&not_available)
     } else {
-        &String::from("N/A")
+        &not_available
     };
     let comment_count = if let Some(statistics) = &video.statistics {
-        statistics.comment_count.as_ref().unwrap_or(&na)
+        statistics.comment_count.as_ref().unwrap_or(&not_available)
     } else {
-        &String::from("N/A")
+        &not_available
     };
     let like_count = if let Some(statistics) = &video.statistics {
-        statistics.like_count.as_ref().unwrap_or(&na)
+        statistics.like_count.as_ref().unwrap_or(&not_available)
     } else {
-        &String::from("N/A")
+        &not_available
     };
 
-    let output = format!(
-        "Title: {}\r\nDuration: {} | Views: {} | Comments: {} Likes: {}",
-        video.snippet.title, duration, view_count, comment_count, like_count
-    );
-
-    Ok(Some(output))
+    Ok(Some(format!(
+        "{}\r\nPublished: {} | Duration: {} | Views: {} | Comments: {} Likes: {}",
+        video.snippet.title,
+        published_at.format("%d/%m/%Y"),
+        duration.chars().skip(2).collect::<String>().to_lowercase(),
+        view_count,
+        comment_count,
+        like_count
+    )))
 }
 
 pub fn extract_video_id(url: &str) -> Option<String> {
     let parsed_url = url::Url::parse(url).ok()?;
 
-    match parsed_url.domain()? {
+    match parsed_url.domain()?.to_lowercase().as_str() {
         "www.youtube.com" | "youtube.com" => {
             if parsed_url.path().to_lowercase().contains("/watch") {
                 parsed_url.query_pairs().find_map(|(key, value)| {
@@ -143,15 +151,16 @@ pub fn extract_video_id(url: &str) -> Option<String> {
                         None
                     }
                 })
-            } else if parsed_url.path().to_lowercase().contains("/shorts")
-                || parsed_url.path().to_lowercase().contains("/live")
+            } else if ["/shorts", "/live"]
+                .iter()
+                .any(|&segment| parsed_url.path().to_lowercase().contains(segment))
             {
                 parsed_url.path_segments()?.nth(1).map(|s| s.to_string())
             } else {
                 None
             }
         }
-        "youtu.be" => parsed_url.path_segments()?.next().map(|s| s.to_string()),
+        "www.youtu.be" | "youtu.be" => parsed_url.path_segments()?.next().map(|s| s.to_string()),
         _ => None,
     }
 }
