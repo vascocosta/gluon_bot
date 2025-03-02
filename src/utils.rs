@@ -3,7 +3,7 @@ use regex::Regex;
 use reqwest::{header::USER_AGENT, Client};
 use scraper::{Html, Selector};
 use serde::Deserialize;
-use std::error::Error;
+use std::{cmp, error::Error};
 use tokio::time::Duration;
 
 const TIMEOUT: u64 = 10;
@@ -163,4 +163,29 @@ pub fn extract_video_id(url: &str) -> Option<String> {
         "www.youtu.be" | "youtu.be" => parsed_url.path_segments()?.next().map(|s| s.to_string()),
         _ => None,
     }
+}
+
+pub fn split_message(message: &str, max_chunk_size: usize) -> Vec<&str> {
+    let message_len = message.len();
+    let num_chunks = message_len.div_ceil(max_chunk_size);
+    let mut chunks = Vec::new();
+
+    let all_chunks_have_newline = (0..num_chunks).all(|chunk| {
+        let start = chunk * max_chunk_size;
+        let end = cmp::min(start + max_chunk_size, message_len);
+        message[start..end].contains('\n')
+    });
+
+    if all_chunks_have_newline {
+        return message.lines().collect();
+    }
+
+    for chunk in 0..num_chunks {
+        let start = chunk * max_chunk_size;
+        let end = cmp::min((chunk * max_chunk_size) + max_chunk_size, message_len);
+
+        chunks.push(&message[start..end]);
+    }
+
+    chunks
 }

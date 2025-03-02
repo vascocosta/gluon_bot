@@ -8,6 +8,7 @@ use commands::BotCommand;
 use database::Database;
 use futures::prelude::*;
 use irc::client::prelude::*;
+use rocket::form::validate::Len;
 use rocket::fs::FileServer;
 use rocket::fs::NamedFile;
 use std::path::Path;
@@ -200,8 +201,26 @@ async fn main() {
                                 Err(_) => String::from("Timeout while running command."),
                             };
 
-                            if let Err(error) = sender.send_privmsg(&target, output) {
-                                eprintln!("{error}");
+                            let max_chunk_size = options
+                                .get("max_chunk_size")
+                                .unwrap_or(&String::from("410"))
+                                .parse()
+                                .unwrap_or(410);
+
+                            if output.len() <= max_chunk_size {
+                                if let Err(error) = sender.send_privmsg(&target, output) {
+                                    eprintln!("{error}");
+                                }
+                            } else {
+                                let output_chunks = utils::split_message(&output, max_chunk_size);
+
+                                for chunk in output_chunks {
+                                    if let Err(error) = sender.send_privmsg(&target, chunk) {
+                                        eprintln!("{error}");
+                                    }
+
+                                    time::sleep(Duration::from_secs(2)).await;
+                                }
                             }
                         }
                     });
