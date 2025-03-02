@@ -93,7 +93,16 @@ impl<'a> BotCommand<'a> {
             "tpoints" | "trainpoints" | "wtc" => train_game::points(db).await,
             "trains" | "schedules" => train_game::schedules(db).await,
             "weather" | "w" => weather::weather(&self.args, &self.nick, self.options, db).await,
-            _ => plugin::plugin(&self.name, &self.args, &self.nick, self.options).await,
+            _ => {
+                plugin::plugin(
+                    &self.name,
+                    &self.args,
+                    &self.nick,
+                    &self.target,
+                    self.options,
+                )
+                .await
+            }
         }
     }
 }

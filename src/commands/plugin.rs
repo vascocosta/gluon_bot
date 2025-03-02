@@ -5,6 +5,7 @@ pub async fn plugin(
     name: &str,
     args: &[String],
     nick: &str,
+    target: &str,
     options: &HashMap<String, String>,
 ) -> String {
     let path = match options.get("plugins_path") {
@@ -15,6 +16,7 @@ pub async fn plugin(
     let mut args: Vec<String> = args.to_vec();
 
     args.insert(0, String::from(nick));
+    args.insert(1, String::from(target));
 
     match task::spawn_blocking(move || {
         match Command::new(format!("{}/{}", path, name))
