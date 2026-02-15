@@ -4,7 +4,7 @@ use chrono_tz::Tz;
 use irc::{client::Client, proto::Command};
 use rand::prelude::*;
 use regex::Regex;
-use std::{collections::HashMap, ops::Range, str::FromStr, sync::Arc};
+use std::{cmp, collections::HashMap, ops::Range, str::FromStr, sync::Arc};
 use tokio::sync::Mutex;
 
 const DEFAULT_OPEN_HOUR: u32 = 5;
@@ -21,6 +21,7 @@ pub enum Period {
     Monthly,
     Year,
     Yearly,
+    AllTime,
     Unknown,
 }
 
@@ -159,7 +160,7 @@ async fn show_results(
                     format!(
                         "{}. {} | {} ({})",
                         position + 1,
-                        &nick[..3],
+                        &nick[..cmp::min(nick.len(), 3)],
                         result.datetime.with_timezone(&result.tz).time(),
                         result.datetime.with_timezone(&result.tz).timezone()
                     ),
@@ -320,6 +321,7 @@ pub async fn first_stats(args: &[String], target: &str, db: Arc<Mutex<Database>>
         "monthly" => stats(Period::Monthly, target, db).await,
         "year" => stats(Period::Year, target, db).await,
         "yearly" => stats(Period::Yearly, target, db).await,
+        "alltime" => stats(Period::AllTime, target, db).await,
         _ => stats(Period::Unknown, target, db).await,
     }
 }
@@ -346,13 +348,17 @@ pub async fn stats(period: Period, target: &str, db: Arc<Mutex<Database>>) -> St
         Period::Year => now
             .signed_duration_since(
                 DateTime::parse_from_str(
-                    format!("{}-12-31 11:59 pm +0000", now.year() - 1).as_str(),
-                    "%Y-%m-%d %H:%M %P %z",
+                    format!("{}-12-31 11:59 +0000", now.year() - 1).as_str(),
+                    "%Y-%m-%d %H:%M %z",
                 )
                 .unwrap_or_default(),
             )
             .num_days() as u64,
         Period::Yearly => 365,
+        Period::AllTime => {
+            let start: DateTime<Utc> = DateTime::default();
+            now.signed_duration_since(start).num_days() as u64
+        }
         Period::Unknown => {
             return String::from(
                 "Argument must be one of: week, weekly, month, monthly, year, yearly.",
