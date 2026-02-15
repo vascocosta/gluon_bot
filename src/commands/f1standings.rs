@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use tokio::task;
 
-const ERGAST_API_URL: &str = "http://ergast.com/api/f1/current";
+const ERGAST_API_URL: &str = "http://api.jolpi.ca/ergast/f1/2025";
 
 mod wcc_models {
     use serde::{Deserialize, Serialize};
