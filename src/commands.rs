@@ -61,7 +61,7 @@ impl<'a> BotCommand<'a> {
         match &self.name[..] {
             "alarm" => base::alarm(&self.args, &self.nick, &self.target, db, client).await,
             "ask" => base::ask(&self.args, db).await,
-            "bet" => f1bet::bet(&self.args, &self.nick, &self.target, self.options, db).await,
+            //"bet" => f1bet::bet(&self.args, &self.nick, &self.target, self.options, db).await,
             "board" => train_game::board(&self.nick, &self.target, &self.args, db).await,
             "city" => city::city(&self.args, db).await,
             "date" | "time" => base::date_time().await,
@@ -83,7 +83,7 @@ impl<'a> BotCommand<'a> {
             "news" => news::news(&self.args, &self.target, client, self.options).await,
             "next" | "n" => next::next(&self.args, &self.nick, &self.target, db).await,
             "ping" => base::ping().await,
-            "points" | "wbc" => f1bet::points(false, self.options, db).await,
+            //"points" | "wbc" => f1bet::points(false, self.options, db).await,
             "quote" => base::quote(&self.args, &self.target, db).await,
             "rates" => rates::rates(&self.args, self.options).await,
             "remind" | "reminder" => {
