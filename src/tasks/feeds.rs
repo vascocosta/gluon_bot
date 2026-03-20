@@ -9,6 +9,7 @@ use tokio::sync::Mutex;
 use tokio::task;
 use tokio::time::{sleep, Duration};
 use tokio_util::sync::CancellationToken;
+use url::Url;
 
 #[derive(Debug, PartialEq)]
 struct Feed {
@@ -132,10 +133,19 @@ pub async fn feeds(
                             eprintln!("{error}");
                         }
 
-                        if let Err(error) = client_clone.lock().await.send(Command::PRIVMSG(
-                            channel.clone(),
-                            entry.links[0].href.clone(),
-                        )) {
+                        let clean_link = match Url::parse(&entry.links[0].href) {
+                            Ok(mut url) => {
+                                url.set_query(None);
+                                url.into_string()
+                            }
+                            Err(_) => entry.links[0].href.clone(),
+                        };
+
+                        if let Err(error) = client_clone
+                            .lock()
+                            .await
+                            .send(Command::PRIVMSG(channel.clone(), clean_link))
+                        {
                             eprintln!("{error}");
                         }
 
