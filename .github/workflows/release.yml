@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build (${{ matrix.os }})
+    name: Build (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -19,11 +19,17 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             archive: tar.gz
+
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             archive: zip
+
           - os: macos-latest
             target: x86_64-apple-darwin
+            archive: tar.gz
+
+          - os: macos-latest
+            target: aarch64-apple-darwin
             archive: tar.gz
 
     steps:
@@ -32,11 +38,13 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
       - name: Build
-        run: cargo build --release
+        run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Prepare artifact name
+      - name: Prepare variables
         id: vars
         shell: bash
         run: |
@@ -45,23 +53,27 @@ jobs:
           echo "app=$APP_NAME" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Package (Linux/macOS)
+      - name: Prepare files
+        shell: bash
+        run: |
+          mkdir dist
+          cp target/${{ matrix.target }}/release/${{ steps.vars.outputs.app }}* dist/ || true
+          cp README.md LICENSE dist/ 2>/dev/null || true
+
+      - name: Package (tar.gz)
         if: matrix.archive == 'tar.gz'
         run: |
-          mkdir dist
-          cp target/release/${{ steps.vars.outputs.app }} dist/
           tar -czf ${{ steps.vars.outputs.app }}-${{ steps.vars.outputs.version }}-${{ matrix.target }}.tar.gz -C dist .
 
-      - name: Package (Windows)
+      - name: Package (zip)
         if: matrix.archive == 'zip'
         run: |
-          mkdir dist
-          copy target\release\${{ steps.vars.outputs.app }}.exe dist\
           powershell Compress-Archive -Path dist\* -DestinationPath ${{ steps.vars.outputs.app }}-${{ steps.vars.outputs.version }}-${{ matrix.target }}.zip
 
-      - name: Upload Release Asset
+      - name: Upload Release
         uses: softprops/action-gh-release@v2
         with:
+          generate_release_notes: true
           files: |
             *.tar.gz
             *.zip
