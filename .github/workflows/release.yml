@@ -33,18 +33,15 @@ jobs:
             archive: tar.gz
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
+      - run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Prepare variables
+      - name: Prepare
         id: vars
         shell: bash
         run: |
@@ -53,27 +50,40 @@ jobs:
           echo "app=$APP_NAME" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Prepare files
+      - name: Package
         shell: bash
         run: |
           mkdir dist
           cp target/${{ matrix.target }}/release/${{ steps.vars.outputs.app }}* dist/ || true
           cp README.md LICENSE dist/ 2>/dev/null || true
 
-      - name: Package (tar.gz)
-        if: matrix.archive == 'tar.gz'
-        run: |
-          tar -czf ${{ steps.vars.outputs.app }}-${{ steps.vars.outputs.version }}-${{ matrix.target }}.tar.gz -C dist .
+          if [ "${{ matrix.archive }}" = "tar.gz" ]; then
+            tar -czf ${{ steps.vars.outputs.app }}-${{ steps.vars.outputs.version }}-${{ matrix.target }}.tar.gz -C dist .
+          else
+            powershell Compress-Archive -Path dist\* -DestinationPath ${{ steps.vars.outputs.app }}-${{ steps.vars.outputs.version }}-${{ matrix.target }}.zip
+          fi
 
-      - name: Package (zip)
-        if: matrix.archive == 'zip'
-        run: |
-          powershell Compress-Archive -Path dist\* -DestinationPath ${{ steps.vars.outputs.app }}-${{ steps.vars.outputs.version }}-${{ matrix.target }}.zip
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: |
+            *.tar.gz
+            *.zip
 
-      - name: Upload Release
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
-            *.tar.gz
-            *.zip
+            **/*.tar.gz
+            **/*.zip
