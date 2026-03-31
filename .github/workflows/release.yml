@@ -3,14 +3,31 @@ name: Release
 on:
   push:
     tags:
-      - 'v*' # Triggers only when you push a tag like v1.0.0
+      - 'v*'
 
 permissions:
-  contents: write # Essential for creating the release and uploading assets
+  contents: write
 
 jobs:
+  # STEP 1: Create the release shell and generate notes once
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create_release.outputs.id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+
+  # STEP 2: Build and upload for each platform
   publish:
     name: Build and Release
+    needs: create-release # Wait for the release to be created
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -47,18 +64,10 @@ jobs:
       - name: Prepare Staging Area
         shell: bash
         run: |
-          # Create a clean folder to avoid subfolders in the archive
           mkdir -p staging
-          
-          # Handle Windows .exe extension
           BINARY_NAME="${{ github.event.repository.name }}"
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            cp "target/${{ matrix.target }}/release/$BINARY_NAME.exe" staging/
-          else
-            cp "target/${{ matrix.target }}/release/$BINARY_NAME" staging/
-          fi
-          
-          # Add README and LICENSE
+          [ "${{ matrix.os }}" = "windows-latest" ] && EXT=".exe" || EXT=""
+          cp "target/${{ matrix.target }}/release/$BINARY_NAME$EXT" staging/
           cp README.md LICENSE staging/
 
       - name: Create Archive (Unix)
@@ -78,6 +87,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ github.event.repository.name }}-${{ github.ref_name }}-${{ matrix.archive_name }}
-          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
